@@ -1,10 +1,10 @@
 mod lexers;
 
-use std::fs;
-use std::path::Path;
 use crate::lexers::*;
 use select::document::Document;
 use select::predicate::{Class, Name};
+use std::fs;
+use std::path::Path;
 use walkdir::WalkDir;
 
 pub fn main() {
@@ -39,24 +39,22 @@ fn parse_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
     if let Ok(source) = fs::read(path) {
         let input: Vec<char> = source.iter().map(|c| *c as char).collect();
         let lang = match file_path.extension() {
-            Some(ext) => {
-                match ext.to_str().unwrap_or("raw") {
-                    "rs" => "rust",
-                    "sh" => "bash",
-                    "js" => "javascript",
-                    "go" => "go",
-                    "ts" | "tsx" => "typescript",
-                    "c" => "c",
-                    "cpp" => "cpp",
-                    "py" => "python",
-                    "java" => "java",
-                    "lua" => "lua",
-                    "cs" => "c#",
-                    "yml" | "yaml" => "yml",
-                    _ => "raw"
-                }
-            }
-            _ => "raw"
+            Some(ext) => match ext.to_str().unwrap_or("raw") {
+                "rs" => "rust",
+                "sh" => "bash",
+                "js" => "javascript",
+                "go" => "go",
+                "ts" | "tsx" => "typescript",
+                "c" => "c",
+                "cpp" => "cpp",
+                "py" => "python",
+                "java" => "java",
+                "lua" => "lua",
+                "cs" => "c#",
+                "yml" | "yaml" => "yml",
+                _ => "raw",
+            },
+            _ => "raw",
         };
         Ok((input, lang))
     } else {
@@ -106,5 +104,5 @@ fn render_html(input: Vec<char>, lang: &str) -> String {
         "ts" | "typescript" => typescript::render::render_html(input),
         "yaml" | "yml" => yaml::render::render_html(input),
         _ => raw::render::render_html(input),
-    }
+    };
 }
