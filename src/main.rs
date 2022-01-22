@@ -6,12 +6,26 @@ use select::document::Document;
 use select::predicate::{Class, Name};
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 #[tokio::main]
 pub async fn main() {
-    for entry in WalkDir::new("src") {
-        match entry {
+    let dir = String::from(".");
+
+    let mut ignore_list: Vec<String> = Vec::new();
+    ignore_list.push(".git".to_string());
+    if let Ok(content) = std::fs::read_to_string(format!("{}/.gitignore", dir)) {
+        let mut lines = content.clone();
+        for line in lines.lines() {
+            ignore_list.push(line.trim_start_matches("/").to_string());
+        }
+    };
+
+    WalkDir::new(dir)
+        .into_iter()
+        .filter_entry(|e| !ignore(e, ignore_list.clone()))
+        .filter_map(|v| v.ok())
+        .for_each(|entry| match entry {
             Ok(entry) => {
                 if entry.path().is_file() {
                     process_file(&entry.path()).await;
@@ -20,8 +34,22 @@ pub async fn main() {
             Err(e) => {
                 println!("{}", e);
             }
-        }
-    }
+        });
+}
+
+fn ignore(entry: &DirEntry, ignore_list: Vec<String>) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| {
+            for ignore in ignore_list {
+                if s.starts_with(&ignore) {
+                    return true;
+                }
+            }
+            false
+        })
+        .unwrap_or(false)
 }
 
 async fn process_file(path: &Path) {

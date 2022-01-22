@@ -1,4 +1,3 @@
-use reqwest::Response;
 use serde::Serialize;
 
 #[derive(Serialize, Clone, Debug)]
