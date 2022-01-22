@@ -15,26 +15,23 @@ pub async fn main() {
     let mut ignore_list: Vec<String> = Vec::new();
     ignore_list.push(".git".to_string());
     if let Ok(content) = std::fs::read_to_string(format!("{}/.gitignore", dir)) {
-        let mut lines = content.clone();
-        for line in lines.lines() {
+        for line in content.lines() {
             ignore_list.push(line.trim_start_matches("/").to_string());
         }
     };
 
-    WalkDir::new(dir)
+    let files = WalkDir::new(dir)
         .into_iter()
         .filter_entry(|e| !ignore(e, ignore_list.clone()))
-        .filter_map(|v| v.ok())
-        .for_each(|entry| match entry {
-            Ok(entry) => {
-                if entry.path().is_file() {
-                    process_file(&entry.path()).await;
-                }
-            }
-            Err(e) => {
-                println!("{}", e);
-            }
-        });
+        .filter_map(|v| v.ok());
+    let mut total = 0;
+    for entry in files {
+        if entry.path().is_file() {
+            process_file(&entry.path()).await;
+            total += 1;
+        }
+    }
+    println!("Done indexing {} files!", total);
 }
 
 fn ignore(entry: &DirEntry, ignore_list: Vec<String>) -> bool {
@@ -116,7 +113,7 @@ async fn extract(content: &str, lang: &str, path: &str) {
                 data.content = child.clone();
                 let result = solr::insert(&data).await;
                 match result {
-                    Ok(_) => print!("."),
+                    Ok(_) => (),
                     Err(e) => println!("{}", e),
                 }
             }
