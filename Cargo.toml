@@ -3,8 +3,13 @@ name = "heline-indexer"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "hli"
+path = "src/main.rs"
 
 [dependencies]
 select = "0.5.0"
 walkdir = "2.3.2"
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0.134", features = ["derive"] }

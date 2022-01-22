@@ -1,4 +1,5 @@
 mod lexers;
+mod solr;
 
 use crate::lexers::*;
 use select::document::Document;
@@ -7,26 +8,27 @@ use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
 
-pub fn main() {
+#[tokio::main]
+pub async fn main() {
     for entry in WalkDir::new("src") {
         match entry {
             Ok(entry) => {
                 if entry.path().is_file() {
-                    process_file(&entry.path());
+                    process_file(&entry.path()).await;
                 }
             }
             Err(e) => {
-                println!("Failed parse the path!");
+                println!("{}", e);
             }
         }
     }
 }
 
-fn process_file(path: &Path) {
-    match parse_file(path) {
+async fn process_file(path: &Path) {
+    match read_file(path) {
         Ok((input, lang)) => {
             let html = render_html(input, lang);
-            extract(&html);
+            extract(&html, lang, path.to_str().unwrap()).await;
         }
         Err(msg) => {
             println!("{}", msg);
@@ -34,7 +36,7 @@ fn process_file(path: &Path) {
     }
 }
 
-fn parse_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
+fn read_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap_or("");
     if let Ok(source) = fs::read(path) {
         let input: Vec<char> = source.iter().map(|c| *c as char).collect();
@@ -62,20 +64,33 @@ fn parse_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
     }
 }
 
-fn extract(content: &str) {
+async fn extract(content: &str, lang: &str, path: &str) {
     let document = Document::from(content);
     let table = document.find(Class("highlight-table"));
-    let mut result: Vec<Vec<String>> = Vec::new();
     if let Some(el) = table.last() {
         let mut index = 0;
         let mut child: Vec<String> = Vec::new();
+        let mut data = solr::GithubFile {
+            id: path.to_string(),
+            file_id: path.to_string(),
+            owner_id: "123".to_string(),
+            path: path.to_string(),
+            repo: "ahmadrosid/heline-indexer".to_string(),
+            branch: "main".to_string(),
+            lang: lang.to_string(),
+            content: vec![],
+        };
         for td in el.find(Name("tr")) {
             index += 1;
             child.push(td.html());
-            println!("Yes we got the html > table > tbody > td!");
             if index == 5 {
-                result.push(child.to_vec());
                 index = 0;
+                data.content = child.clone();
+                let result = solr::insert(&data).await;
+                match result {
+                    Ok(_) => print!("."),
+                    Err(e) => println!("{}", e),
+                }
             }
         }
     }
