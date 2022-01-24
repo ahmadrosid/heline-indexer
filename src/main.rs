@@ -38,13 +38,15 @@ pub async fn main() {
 
 #[track_caller]
 pub fn exec_command(cmd: &mut Command) -> bool {
-    let output = cmd.stderr(Stdio::inherit()).output().expect("Failed to run command");
+    let output = cmd
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("Failed to run command");
     output.status.success()
 }
 
 fn parse_json(path: &str) -> Result<Vec<String>> {
     let data: String = std::fs::read_to_string(path).unwrap_or("".to_string());
-
     let v: Value = serde_json::from_str(&*data)?;
 
     let mut result: Vec<String> = Vec::new();
