@@ -17,18 +17,19 @@ pub async fn main() {
         if value.len() > 1 {
             let cwd = "test-repo";
             let git_url = value.first().unwrap();
-            let repo = git_url.split("/").last().unwrap();
-
+            let mut paths = git_url.split("/").collect::<Vec<_>>();
+            let repo_name = paths.last().unwrap();
+            let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
             let success = exec_command(
                 Command::new("git")
                     .current_dir(cwd)
                     .arg("clone")
                     .arg(value.first().unwrap())
-                    .arg(repo),
+                    .arg(repo_name),
             );
             if success {
-                println!("Done cloning and start indexing {}/{}!", cwd, repo);
-                index_directory(&format!("{}/{}", cwd, repo)).await
+                println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
+                index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await
             } else {
                 println!("Failed to clone {}!", git_url);
             }
@@ -59,7 +60,7 @@ fn parse_json(path: &str) -> Result<Vec<String>> {
     Ok(result)
 }
 
-async fn index_directory(dir: &str) {
+async fn index_directory(dir: &str, github_repo: &str) {
     let mut ignore_list: Vec<String> = Vec::new();
     ignore_list.push(".git".to_string());
     if let Ok(content) = std::fs::read_to_string(format!("{}/.gitignore", dir)) {
@@ -75,7 +76,7 @@ async fn index_directory(dir: &str) {
     let mut total = 0;
     for entry in files {
         if entry.path().is_file() {
-            process_file(&entry.path()).await;
+            process_file(&entry.path(), github_repo).await;
             total += 1;
         }
     }
@@ -97,11 +98,11 @@ fn ignore(entry: &DirEntry, ignore_list: Vec<String>) -> bool {
         .unwrap_or(false)
 }
 
-async fn process_file(path: &Path) {
+async fn process_file(path: &Path, github_repo: &str) {
     match read_file(path) {
         Ok((input, lang)) => {
             let html = render_html(input, lang);
-            extract(&html, lang, path.to_str().unwrap()).await;
+            extract(&html, lang, path.to_str().unwrap(), github_repo).await;
         }
         Err(msg) => {
             println!("{}", msg);
@@ -138,7 +139,7 @@ fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String
     }
 }
 
-async fn extract(content: &str, lang: &str, path: &str) {
+async fn extract(content: &str, lang: &str, path: &str, github_repo: &str) {
     let document = Document::from(content);
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
@@ -149,7 +150,7 @@ async fn extract(content: &str, lang: &str, path: &str) {
             file_id: path.to_string(),
             owner_id: "123".to_string(),
             path: path.to_string(),
-            repo: "ahmadrosid/heline-indexer".to_string(),
+            repo: github_repo.to_string(),
             branch: "main".to_string(),
             lang: lang.to_string(),
             content: vec![],
