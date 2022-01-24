@@ -1,5 +1,3 @@
-#[allow(unused)]
-
 mod lexers;
 mod solr;
 use serde_json::{Result, Value};
@@ -14,48 +12,34 @@ use walkdir::{DirEntry, WalkDir};
 
 #[tokio::main]
 pub async fn main() {
-    // let dir = String::from(".");
     let path = "sh.json";
     if let Ok(value) = parse_json(path) {
-        let git_available = match Command::new("git")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-        {
-            Ok(status) => status.success(),
-            Err(_) => false,
-        };
-        if git_available && value.len() > 1 {
-            let result = output(
+        if value.len() > 1 {
+            let cwd = "test-repo";
+            let git_url = value.first().unwrap();
+            let repo = git_url.split("/").last().unwrap();
+
+            let success = exec_command(
                 Command::new("git")
-                    .current_dir("test-repo")
+                    .current_dir(cwd)
                     .arg("clone")
-                    .arg(value.first().unwrap()),
+                    .arg(value.first().unwrap())
+                    .arg(repo),
             );
-            println!("Done cloning '{}'", result);
+            if success {
+                println!("Done cloning and start indexing {}/{}!", cwd, repo);
+                index_directory(&format!("{}/{}", cwd, repo)).await
+            } else {
+                println!("Failed to clone {}!", git_url);
+            }
         }
     }
 }
-fn fail(s: &str) -> ! {
-    println!("\n\n{}\n\n", s);
-    std::process::exit(1);
-}
 
 #[track_caller]
-pub fn output(cmd: &mut Command) -> String {
-    let output = match cmd.stderr(Stdio::null()).output() {
-        Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
-    };
-    if !output.status.success() {
-        panic!(
-            "command did not execute successfully: {:?}\n\
-             expected success, got: {}",
-            cmd, output.status
-        );
-    }
-    String::from_utf8(output.stdout).unwrap()
+pub fn exec_command(cmd: &mut Command) -> bool {
+    let output = cmd.stderr(Stdio::inherit()).output().expect("Failed to run command");
+    output.status.success()
 }
 
 fn parse_json(path: &str) -> Result<Vec<String>> {
@@ -84,7 +68,7 @@ async fn index_directory(dir: &str) {
 
     let files = WalkDir::new(dir)
         .into_iter()
-        .filter_entry(|e| !ignore(e, ignore_list.clone()))
+        .filter_entry(|e| ignore(e, ignore_list.clone()))
         .filter_map(|v| v.ok());
     let mut total = 0;
     for entry in files {
@@ -139,7 +123,7 @@ fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String
                 "html" => "html",
                 "java" => "java",
                 "lua" => "lua",
-                "py" => "phyton",
+                "py" => "python",
                 "cs" => "c#",
                 "yml" | "yaml" => "yml",
                 _ => "raw",
