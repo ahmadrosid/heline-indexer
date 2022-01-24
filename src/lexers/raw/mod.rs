@@ -1,6 +1,6 @@
 // ---- DON'T EDIT! THIS IS AUTO GENERATED CODE ---- //
-pub mod render;
 pub mod token;
+pub mod render;
 
 pub struct Lexer {
     input: Vec<char>,
@@ -69,17 +69,21 @@ impl Lexer {
                     #[allow(unused_mut)]
                     let mut identifier: Vec<char> = read_identifier(self);
                     match token::get_keyword_token(&identifier) {
-                        Ok(keyword_token) => keyword_token,
-                        Err(_err) => token::Token::IDENT(identifier),
+                            Ok(keyword_token) => {
+                                keyword_token
+                            },
+                            Err(_err) => {
+                                token::Token::IDENT(identifier)
+                            }
+                        }
+                    } else if is_digit(self.ch) {
+                        let identifier: Vec<char> = read_number(self);
+                        token::Token::INT(identifier)
+                    } else {
+                        token::Token::ILLEGAL
                     }
-                } else if is_digit(self.ch) {
-                    let identifier: Vec<char> = read_number(self);
-                    token::Token::INT(identifier)
-                } else {
-                    token::Token::ILLEGAL
                 }
             }
-        }
         self.read_char();
         tok
     }

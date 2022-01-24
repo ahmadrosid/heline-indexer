@@ -1,17 +1,79 @@
+#[allow(unused)]
+
 mod lexers;
 mod solr;
+use serde_json::{Result, Value};
 
 use crate::lexers::*;
 use select::document::Document;
 use select::predicate::{Class, Name};
 use std::fs;
 use std::path::Path;
+use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
 
 #[tokio::main]
 pub async fn main() {
-    let dir = String::from(".");
+    // let dir = String::from(".");
+    let path = "sh.json";
+    if let Ok(value) = parse_json(path) {
+        let git_available = match Command::new("git")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+        {
+            Ok(status) => status.success(),
+            Err(_) => false,
+        };
+        if git_available && value.len() > 1 {
+            let result = output(
+                Command::new("git")
+                    .current_dir("test-repo")
+                    .arg("clone")
+                    .arg(value.first().unwrap()),
+            );
+            println!("Done cloning '{}'", result);
+        }
+    }
+}
+fn fail(s: &str) -> ! {
+    println!("\n\n{}\n\n", s);
+    std::process::exit(1);
+}
 
+#[track_caller]
+pub fn output(cmd: &mut Command) -> String {
+    let output = match cmd.stderr(Stdio::null()).output() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+    };
+    if !output.status.success() {
+        panic!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}",
+            cmd, output.status
+        );
+    }
+    String::from_utf8(output.stdout).unwrap()
+}
+
+fn parse_json(path: &str) -> Result<Vec<String>> {
+    let data: String = std::fs::read_to_string(path).unwrap_or("".to_string());
+
+    let v: Value = serde_json::from_str(&*data)?;
+
+    let mut result: Vec<String> = Vec::new();
+    if let Some(arr) = v.as_array() {
+        for val in arr {
+            result.push(val.as_str().unwrap().to_string())
+        }
+    }
+
+    Ok(result)
+}
+
+async fn index_directory(dir: &str) {
     let mut ignore_list: Vec<String> = Vec::new();
     ignore_list.push(".git".to_string());
     if let Ok(content) = std::fs::read_to_string(format!("{}/.gitignore", dir)) {
@@ -61,7 +123,7 @@ async fn process_file(path: &Path) {
     }
 }
 
-fn read_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
+fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap_or("");
     if let Ok(source) = fs::read(path) {
         let input: Vec<char> = source.iter().map(|c| *c as char).collect();
