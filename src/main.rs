@@ -1,8 +1,7 @@
-mod lexers;
 mod solr;
 use serde_json::Value;
 
-use crate::lexers::*;
+use hl::lexers::*;
 use select::document::Document;
 use select::predicate::{Class, Name};
 use std::fs;
@@ -17,7 +16,7 @@ pub async fn main() {
     if value.len() > 1 {
         let cwd = "test-repo";
         let git_url = value.first().unwrap();
-        let mut paths = git_url.split("/").collect::<Vec<_>>();
+        let paths = git_url.split("/").collect::<Vec<_>>();
         let repo_name = paths.last().unwrap();
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
         let success = exec_command(
@@ -46,14 +45,18 @@ pub fn exec_command(cmd: &mut Command) -> bool {
 }
 
 fn parse_json(path: &str) -> Vec<String> {
-    let data: String = std::fs::read_to_string(path).unwrap_or("".to_string());
-    let v: Value = serde_json::from_str(&*data)?;
-
     let mut result: Vec<String> = Vec::new();
-    if let Some(arr) = v.as_array() {
-        for val in arr {
-            result.push(val.as_str().unwrap().to_string())
+    let data: String = std::fs::read_to_string(path).unwrap_or("".to_string());
+    let value: Result<Value, serde_json::Error> = serde_json::from_str(&*data);
+    match value {
+        Ok(val) => {
+            if let Some(arr) = val.as_array() {
+                for val in arr {
+                    result.push(val.as_str().unwrap().to_string())
+                }
+            }
         }
+        Err(_) => {}
     }
 
     result
