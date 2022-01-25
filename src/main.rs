@@ -1,6 +1,6 @@
 mod lexers;
 mod solr;
-use serde_json::{Result, Value};
+use serde_json::Value;
 
 use crate::lexers::*;
 use select::document::Document;
@@ -13,26 +13,25 @@ use walkdir::{DirEntry, WalkDir};
 #[tokio::main]
 pub async fn main() {
     let path = "sh.json";
-    if let Ok(value) = parse_json(path) {
-        if value.len() > 1 {
-            let cwd = "test-repo";
-            let git_url = value.first().unwrap();
-            let mut paths = git_url.split("/").collect::<Vec<_>>();
-            let repo_name = paths.last().unwrap();
-            let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
-            let success = exec_command(
-                Command::new("git")
-                    .current_dir(cwd)
-                    .arg("clone")
-                    .arg(value.first().unwrap())
-                    .arg(repo_name),
-            );
-            if success {
-                println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
-                index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await
-            } else {
-                println!("Failed to clone {}!", git_url);
-            }
+    let value = parse_json(path);
+    if value.len() > 1 {
+        let cwd = "test-repo";
+        let git_url = value.first().unwrap();
+        let mut paths = git_url.split("/").collect::<Vec<_>>();
+        let repo_name = paths.last().unwrap();
+        let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
+        let success = exec_command(
+            Command::new("git")
+                .current_dir(cwd)
+                .arg("clone")
+                .arg(value.first().unwrap())
+                .arg(repo_name),
+        );
+        if success {
+            println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
+            index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await
+        } else {
+            println!("Failed to clone {}!", git_url);
         }
     }
 }
@@ -46,7 +45,7 @@ pub fn exec_command(cmd: &mut Command) -> bool {
     output.status.success()
 }
 
-fn parse_json(path: &str) -> Result<Vec<String>> {
+fn parse_json(path: &str) -> Vec<String> {
     let data: String = std::fs::read_to_string(path).unwrap_or("".to_string());
     let v: Value = serde_json::from_str(&*data)?;
 
@@ -57,7 +56,7 @@ fn parse_json(path: &str) -> Result<Vec<String>> {
         }
     }
 
-    Ok(result)
+    result
 }
 
 async fn index_directory(dir: &str, github_repo: &str) {
