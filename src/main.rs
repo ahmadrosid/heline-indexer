@@ -30,8 +30,8 @@ pub async fn main() {
                 .arg(repo_name),
         );
         if success {
-            println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
             index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await;
+            println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
             exec_command(
                 Command::new("rm")
                     .current_dir(".")
@@ -157,8 +157,8 @@ fn get_branch_name(paths: Vec<&str>) -> String {
 
 fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap_or("");
-    if let Ok(source) = fs::read(path) {
-        let input: Vec<char> = source.iter().map(|c| *c as char).collect();
+    if let Ok(source) = fs::read_to_string(path) {
+        let input = source.chars().collect();
         let lang = match file_path.extension() {
             Some(ext) => match ext.to_str().unwrap_or("raw") {
                 "rs" => "rust",
@@ -175,7 +175,7 @@ fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String
                 "py" => "python",
                 "cs" => "c#",
                 "yml" | "yaml" => "yml",
-                _ => "raw",
+                _ => "raw"
             },
             _ => "raw",
         };
@@ -206,8 +206,7 @@ async fn store(mut data: solr::GithubFile, html: &str) {
             data.content.push(child.to_owned());
         }
 
-        let result = solr::insert(&data).await;
-        match result {
+        match solr::insert(&data).await {
             Ok(res) => println!("{}", res),
             Err(e) => println!("{}", e),
         }
