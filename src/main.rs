@@ -195,7 +195,7 @@ async fn store(mut data: solr::GithubFile, html: &str) {
             index += 1;
             child.push_str(&td.html());
             // Store as array with length of 5!
-            if index >= 5 {
+            if index >= 8 {
                 index = 0;
                 data.content.push(child.to_owned());
             }
