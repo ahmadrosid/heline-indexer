@@ -1,7 +1,8 @@
 [
+  "https://github.com/nvm-sh/nvm",
+  "https://github.com/fatih/color",
   "https://github.com/ahmadrosid/gemoji",
   "https://github.com/ohmyzsh/ohmyzsh",
-  "https://github.com/nvm-sh/nvm",
   "https://github.com/papers-we-love/papers-we-love",
   "https://github.com/tldr-pages/tldr",
   "https://github.com/pi-hole/pi-hole",

@@ -1,5 +1,6 @@
 mod github;
 mod solr;
+mod loading;
 
 use serde_json::Value;
 
@@ -10,17 +11,20 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use walkdir::{DirEntry, WalkDir};
+use crate::loading::Loading;
 
 #[tokio::main]
 pub async fn main() {
     let path = "sh.json";
     let value = parse_json(path);
+    let mut index = 0;
     for val in value {
         let cwd = "repos";
         let git_url = val.to_string();
         let paths = git_url.split("/").collect::<Vec<_>>();
         let repo_name = paths.last().unwrap();
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
+        // index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await;
 
         let success = exec_command(
             Command::new("git")
@@ -31,7 +35,6 @@ pub async fn main() {
         );
         if success {
             index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await;
-            println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
             exec_command(
                 Command::new("rm")
                     .current_dir(".")
@@ -41,7 +44,10 @@ pub async fn main() {
         } else {
             println!("Failed to clone {}!", git_url);
         }
-        std::process::exit(0);
+        index += 1;
+        if index == 4 {
+            std::process::exit(0);
+        }
     }
 }
 
@@ -73,56 +79,47 @@ fn parse_json(path: &str) -> Vec<String> {
 }
 
 async fn index_directory(dir: &str, github_repo: &str) {
-    let mut ignore_list: Vec<String> = Vec::new();
-    ignore_list.push(".git".to_string());
-    if let Ok(content) = std::fs::read_to_string(format!("{}/.gitignore", dir)) {
-        for line in content.lines() {
-            ignore_list.push(line.trim_start_matches("/").to_string());
-        }
-    };
-
     let files = WalkDir::new(dir)
         .into_iter()
-        .filter_entry(|e| !ignore(e, ignore_list.clone()))
+        .filter_entry(|e| ignore(e))
         .filter_map(|v| v.ok());
     let mut total = 0;
     let username = github_repo.split("/").next().unwrap();
+    let mut loading = Loading::new();
+    loading.start();
+    let branch = get_branch_name(dir);
     match github::get_user_id(username).await {
         Ok(user_id) => {
             for entry in files {
                 if entry.path().is_file() {
-                    process_file(&entry.path(), github_repo, &user_id).await;
+                    process_file(&entry.path(), github_repo, &user_id, &branch).await;
                     total += 1;
+                    loading.text(format!("Indexing {}", entry.path().display()));
                 }
             }
-            println!("Done indexing {} files!", total);
+            loading.success(format!("Done indexing '{}' total {} files!", github_repo, total));
         }
-        Err(e) => println!("{}", e),
+        Err(e) => {
+            loading.fail(e);
+        },
     }
+    loading.end();
 }
 
-fn ignore(entry: &DirEntry, ignore_list: Vec<String>) -> bool {
+fn ignore(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s| {
-            for ignore in ignore_list {
-                if s.starts_with(&ignore) {
-                    return true;
-                }
-            }
-            false
-        })
+        .map(|s| !s.starts_with(".git"))
         .unwrap_or(false)
 }
 
-async fn process_file(path: &Path, github_repo: &str, user_id: &str) {
+async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str) {
     match read_file(path) {
         Ok((input, lang)) => {
             let html = render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
-            let branch = get_branch_name(paths.to_vec());
             let data = solr::GithubFile {
                 id: file_path.to_string(),
                 file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
@@ -141,8 +138,8 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str) {
     }
 }
 
-fn get_branch_name(paths: Vec<&str>) -> String {
-    let file_path = [paths[0], paths[1], ".git/HEAD"].join("/");
+fn get_branch_name(dir: &str) -> String {
+    let file_path = [dir, ".git/HEAD"].join("/");
     return match std::fs::read_to_string(file_path) {
         Ok(file) => file
             .split("/")
@@ -194,22 +191,29 @@ async fn store(mut data: solr::GithubFile, html: &str) {
         for td in el.find(Name("tr")) {
             index += 1;
             child.push_str(&td.html());
+            child.push('\n');
             // Store as array with length of 5!
             if index >= 8 {
                 index = 0;
+                data.content = vec![];
                 data.content.push(child.to_owned());
+                match solr::insert(&data).await {
+                    Ok(_) => {},
+                    Err(e) => println!("{}", e),
+                }
             }
         }
 
         // If there any left content that less than 5 line then store it to DB!
         if index != 0 {
+            data.content = vec![];
             data.content.push(child.to_owned());
+            match solr::insert(&data).await {
+                Ok(_) => {},
+                Err(e) => println!("{}", e),
+            }
         }
 
-        match solr::insert(&data).await {
-            Ok(res) => println!("{}", res),
-            Err(e) => println!("{}", e),
-        }
     }
 }
 
@@ -241,6 +245,8 @@ fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
+                    return bash::render::render_html(input);
+                } else if result == "#!/usr/bin/env zsh" {
                     return bash::render::render_html(input);
                 }
             }
