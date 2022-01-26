@@ -15,27 +15,33 @@ use walkdir::{DirEntry, WalkDir};
 pub async fn main() {
     let path = "sh.json";
     let value = parse_json(path);
-    if value.len() > 1 {
-        let cwd = "test-repo";
-        let git_url = value.last().unwrap();
+    for val in value {
+        let cwd = "repos";
+        let git_url = val.to_string();
         let paths = git_url.split("/").collect::<Vec<_>>();
         let repo_name = paths.last().unwrap();
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
-        index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await
 
-        // let success = exec_command(
-        //     Command::new("git")
-        //         .current_dir(cwd)
-        //         .arg("clone")
-        //         .arg(value.last().unwrap())
-        //         .arg(repo_name),
-        // );
-        // if success {
-        //     println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
-        //     index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await
-        // } else {
-        //     println!("Failed to clone {}!", git_url);
-        // }
+        let success = exec_command(
+            Command::new("git")
+                .current_dir(cwd)
+                .arg("clone")
+                .arg(&val.to_string())
+                .arg(repo_name),
+        );
+        if success {
+            println!("Done cloning and start indexing {}/{}!", cwd, repo_name);
+            index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await;
+            exec_command(
+                Command::new("rm")
+                    .current_dir(".")
+                    .arg("-rf")
+                    .arg(format!("{}/{}", cwd, repo_name)),
+            );
+        } else {
+            println!("Failed to clone {}!", git_url);
+        }
+        std::process::exit(0);
     }
 }
 
@@ -158,14 +164,14 @@ fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String
                 "rs" => "rust",
                 "sh" | "zsh" => "bash",
                 "js" => "javascript",
-                "go" => "go",
+                "go" => "Go",
                 "ts" | "tsx" => "typescript",
                 "c" => "c",
                 "cpp" => "cpp",
                 "html" => "html",
                 "java" => "java",
                 "lua" => "lua",
-                "md" => "md",
+                "md" => "Markdown",
                 "py" => "python",
                 "cs" => "c#",
                 "yml" | "yaml" => "yml",
@@ -202,9 +208,7 @@ async fn store(mut data: solr::GithubFile, html: &str) {
 
         let result = solr::insert(&data).await;
         match result {
-            Ok(res) => {
-                println!("{}", res)
-            }
+            Ok(res) => println!("{}", res),
             Err(e) => println!("{}", e),
         }
     }
@@ -218,7 +222,7 @@ fn render_html(input: Vec<char>, lang: &str) -> String {
         "css" => css::render::render_html(input),
         "cuda" => cuda::render::render_html(input),
         "edn" => edn::render::render_html(input),
-        "go" => go::render::render_html(input),
+        "Go" => go::render::render_html(input),
         "hs" | "haskell" => haskell::render::render_html(input),
         "html" => html::render::render_html(input),
         "rust" => rust::render::render_html(input),
@@ -228,7 +232,7 @@ fn render_html(input: Vec<char>, lang: &str) -> String {
         "js" | "javascript" => javascript::render::render_html(input),
         "json" => json::render::render_html(input),
         "lua" => lua::render::render_html(input),
-        "md" => markdown::render::render_html(input),
+        "Markdown" => markdown::render::render_html(input),
         "php" => php::render::render_html(input),
         "python" => python::render::render_html(input),
         "ts" | "typescript" => typescript::render::render_html(input),
