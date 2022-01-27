@@ -8,7 +8,6 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
         let input = source.chars().collect();
         let lang = match file_path.extension() {
             Some(ext) => match ext.to_str().unwrap_or("Raw") {
-                "rs" => "Rust",
                 "sh" | "zsh" | "bash" => "Shell",
                 "js" => "JavaScript",
                 "go" => "Go",
@@ -22,8 +21,18 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
                 "lua" => "Lua",
                 "md" => "Markdown",
                 "py" => "Python",
+                "php" => "PHP",
+                "rs" => "Rust",
+                "toml" => "TOML",
                 "cs" => "C#",
                 "yml" | "yaml" => "YAML",
+                "lock" => {
+                    if file_path.file_name().unwrap().to_str().unwrap() == "Cargo.lock" {
+                        "TOML"
+                    } else {
+                        "lock"
+                    }
+                }
                 _ => {
                     ext.to_str().unwrap()
                 },
@@ -68,6 +77,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
         "Markdown" => markdown::render::render_html(input),
         "PHP" => php::render::render_html(input),
         "Python" => python::render::render_html(input),
+        "TOML" => toml::render::render_html(input),
         "TypeScript" => typescript::render::render_html(input),
         "YAML" => yaml::render::render_html(input),
         _ => {

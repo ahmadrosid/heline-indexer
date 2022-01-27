@@ -121,11 +121,12 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
             let html = parser::render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
+            let id = [github_repo,&paths[2..paths.len()].to_vec().join("/")].join("/");
             let data = solr::GithubFile {
-                id: file_path.to_string(),
+                id: id.to_owned(),
                 file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
                 owner_id: user_id.to_string(),
-                path: path.to_str().unwrap().to_string(),
+                path: id.to_string(),
                 repo: github_repo.to_string(),
                 branch: branch.to_owned(),
                 lang: lang.to_string(),
