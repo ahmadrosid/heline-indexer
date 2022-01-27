@@ -22,16 +22,16 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
                 "md" => "Markdown",
                 "py" => "Python",
                 "php" => "PHP",
+                "ru" | "rb" => "Ruby",
                 "rs" => "Rust",
                 "toml" => "TOML",
                 "cs" => "C#",
                 "yml" | "yaml" => "YAML",
-                "lock" => {
-                    if file_path.file_name().unwrap().to_str().unwrap() == "Cargo.lock" {
-                        "TOML"
-                    } else {
-                        "lock"
-                    }
+                "lock" => match file_path.file_name().unwrap().to_str().unwrap() {
+                    "Cargo.lock"  => "TOML",
+                    "Gemfile.lock"  => "Gemfile",
+                    "yarn.lock" => "YAML",
+                    _ => "Raw"
                 }
                 _ => {
                     ext.to_str().unwrap()
@@ -50,6 +50,8 @@ fn parse_file_name(file: &str) -> &str {
         "Jenkinsfile" => "Groovy",
         "Dockerfile" => "Dockerfile",
         "Makefile" => "Makefile",
+        "Gemfile" => "Gemfile",
+        "Rakefile" => "Rakefile",
         _ => "Raw"
     };
 }
@@ -67,6 +69,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
         "Groovy" => groovy::render::render_html(input),
         "Haskell" => haskell::render::render_html(input),
         "HTML" => html::render::render_html(input),
+        "Ruby" | "Rakefile" | "Gemfile" => ruby::render::render_html(input),
         "Rust" => rust::render::render_html(input),
         "C#" => cs::render::render_html(input),
         "Java" => java::render::render_html(input),
@@ -118,6 +121,22 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash{
                     return bash::render::render_html(input);
+                }
+            }
+
+            let mark_bash = String::from("#!/usr/bin/env ruby");
+            if input.len() > mark_bash.len() {
+                let result: String = input[0..mark_bash.len()].iter().collect();
+                if result == mark_bash{
+                    return ruby::render::render_html(input);
+                }
+            }
+
+            let mark_bash = String::from("@ruby");
+            if input.len() > mark_bash.len() {
+                let result: String = input[0..mark_bash.len()].iter().collect();
+                if result == mark_bash{
+                    return ruby::render::render_html(input);
                 }
             }
 
