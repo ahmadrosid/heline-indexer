@@ -240,6 +240,7 @@ name = "heline-indexer"
 version = "0.1.0"
 dependencies = [
  "hl",
+ "loading",
  "reqwest",
  "select",
  "serde",
@@ -260,7 +261,7 @@ dependencies = [
 [[package]]
 name = "hl"
 version = "0.1.0"
-source = "git+https://github.com/ahmadrosid/hl?branch=main#9dffd8e933da51dfe26f3023c71dd9ac33edf9dc"
+source = "git+https://github.com/ahmadrosid/hl?branch=main#ae2b0f8723869c582e08afb9818048b0f499943d"
 dependencies = [
  "clap",
  "yaml-rust",
@@ -425,6 +426,12 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "loading"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0faeaa71bf6fcdc4e838cc166d95fdc9ebe3a57ff1368e280615606066326b4"
 
 [[package]]
 name = "lock_api"

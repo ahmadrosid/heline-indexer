@@ -1,22 +1,26 @@
 mod github;
 mod solr;
-mod loading;
+mod parse;
 
 use serde_json::Value;
 
-use hl::lexers::*;
+use loading::Loading;
 use select::document::Document;
 use select::predicate::{Class, Name};
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use walkdir::{DirEntry, WalkDir};
-use crate::loading::Loading;
+use walkdir::WalkDir;
 
 #[tokio::main]
 pub async fn main() {
-    let path = "sh.json";
-    let value = parse_json(path);
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() == 1 {
+        println!("Please provide path!");
+        std::process::exit(1);
+    }
+
+    let value = parse_json(&args[1]);
     let mut index = 0;
     for val in value {
         let cwd = "repos";
@@ -45,7 +49,7 @@ pub async fn main() {
             println!("Failed to clone {}!", git_url);
         }
         index += 1;
-        if index == 4 {
+        if index == 1 {
             std::process::exit(0);
         }
     }
@@ -79,45 +83,43 @@ fn parse_json(path: &str) -> Vec<String> {
 }
 
 async fn index_directory(dir: &str, github_repo: &str) {
-    let files = WalkDir::new(dir)
-        .into_iter()
-        .filter_entry(|e| ignore(e))
-        .filter_map(|v| v.ok());
     let mut total = 0;
     let username = github_repo.split("/").next().unwrap();
-    let mut loading = Loading::new();
-    loading.start();
+    let mut log = Loading::new();
+    log.start();
     let branch = get_branch_name(dir);
+    exec_command(Command::new("rm").arg("-rf").arg(format!("{}/.git", dir)));
+
     match github::get_user_id(username).await {
         Ok(user_id) => {
-            for entry in files {
+            let dirs = WalkDir::new(dir)
+                .into_iter()
+                .filter_map(|v| v.ok());
+
+            for entry in dirs {
                 if entry.path().is_file() {
-                    process_file(&entry.path(), github_repo, &user_id, &branch).await;
+                    process_file(&entry.path(), github_repo, &user_id, &branch, log.to_owned()).await;
                     total += 1;
-                    loading.text(format!("Indexing {}", entry.path().display()));
+                    log.text(format!("Indexing {}", entry.path().display()));
                 }
             }
-            loading.success(format!("Done indexing '{}' total {} files!", github_repo, total));
+
+            log.success(format!(
+                "Done indexing '{}' total {} files!",
+                github_repo, total
+            ));
         }
         Err(e) => {
-            loading.fail(e);
-        },
+            log.fail(e);
+        }
     }
-    loading.end();
+    log.end();
 }
 
-fn ignore(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| !s.starts_with(".git"))
-        .unwrap_or(false)
-}
-
-async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str) {
-    match read_file(path) {
+async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str, log: Loading) {
+    match parse.read_file(path) {
         Ok((input, lang)) => {
-            let html = render_html(input, lang);
+            let html = parse.render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
             let data = solr::GithubFile {
@@ -130,10 +132,10 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
                 lang: lang.to_string(),
                 content: vec![],
             };
-            store(data, &html).await;
+            store(data, &html, log).await;
         }
         Err(msg) => {
-            println!("{}", msg);
+            log.warn(msg);
         }
     }
 }
@@ -152,37 +154,7 @@ fn get_branch_name(dir: &str) -> String {
     };
 }
 
-fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
-    let path = file_path.to_str().unwrap_or("");
-    if let Ok(source) = fs::read_to_string(path) {
-        let input = source.chars().collect();
-        let lang = match file_path.extension() {
-            Some(ext) => match ext.to_str().unwrap_or("raw") {
-                "rs" => "rust",
-                "sh" | "zsh" => "bash",
-                "js" => "javascript",
-                "go" => "Go",
-                "ts" | "tsx" => "typescript",
-                "c" => "c",
-                "cpp" => "cpp",
-                "html" => "html",
-                "java" => "java",
-                "lua" => "lua",
-                "md" => "Markdown",
-                "py" => "python",
-                "cs" => "c#",
-                "yml" | "yaml" => "yml",
-                _ => "raw"
-            },
-            _ => "raw",
-        };
-        Ok((input, lang))
-    } else {
-        Err(format!("Failed to read file path {}", path))
-    }
-}
-
-async fn store(mut data: solr::GithubFile, html: &str) {
+async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
     let document = Document::from(html);
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
@@ -198,8 +170,8 @@ async fn store(mut data: solr::GithubFile, html: &str) {
                 data.content = vec![];
                 data.content.push(child.to_owned());
                 match solr::insert(&data).await {
-                    Ok(_) => {},
-                    Err(e) => println!("{}", e),
+                    Ok(_) => {}
+                    Err(e) => log.warn(e.to_string()),
                 }
             }
         }
@@ -209,49 +181,9 @@ async fn store(mut data: solr::GithubFile, html: &str) {
             data.content = vec![];
             data.content.push(child.to_owned());
             match solr::insert(&data).await {
-                Ok(_) => {},
-                Err(e) => println!("{}", e),
+                Ok(_) => {}
+                Err(e) => log.warn(e.to_string()),
             }
         }
-
     }
-}
-
-fn render_html(input: Vec<char>, lang: &str) -> String {
-    return match lang {
-        "bash" => bash::render::render_html(input),
-        "c" => c::render::render_html(input),
-        "clojure" | "clj" => clojure::render::render_html(input),
-        "css" => css::render::render_html(input),
-        "cuda" => cuda::render::render_html(input),
-        "edn" => edn::render::render_html(input),
-        "Go" => go::render::render_html(input),
-        "hs" | "haskell" => haskell::render::render_html(input),
-        "html" => html::render::render_html(input),
-        "rust" => rust::render::render_html(input),
-        "cpp" => cpp::render::render_html(input),
-        "cs" | "c#" => cs::render::render_html(input),
-        "java" => java::render::render_html(input),
-        "js" | "javascript" => javascript::render::render_html(input),
-        "json" => json::render::render_html(input),
-        "lua" => lua::render::render_html(input),
-        "Markdown" => markdown::render::render_html(input),
-        "php" => php::render::render_html(input),
-        "python" => python::render::render_html(input),
-        "ts" | "typescript" => typescript::render::render_html(input),
-        "yaml" | "yml" => yaml::render::render_html(input),
-        _ => {
-            let mark_bash = String::from("#!/bin/bash");
-            if input.len() > mark_bash.len() {
-                let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash {
-                    return bash::render::render_html(input);
-                } else if result == "#!/usr/bin/env zsh" {
-                    return bash::render::render_html(input);
-                }
-            }
-
-            raw::render::render_html(input)
-        }
-    };
 }

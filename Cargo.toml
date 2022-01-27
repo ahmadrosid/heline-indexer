@@ -15,3 +15,4 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0.134", features = ["derive"] }
 serde_json = "1.0.78"
 hl = { git = "https://github.com/ahmadrosid/hl", branch = "main" }
+loading = "0.1.2"
