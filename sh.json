@@ -1,5 +1,6 @@
 [
-  "https://github.com/ahmadrosid/wlp",
+  "https://github.com/ahmadrosid/hl",
+  "https://github.com/tj/git-extras",
   "https://github.com/ahmadrosid/walk",
   "https://github.com/ahmadrosid/gemoji",
   "https://github.com/nvie/gitflow",
@@ -29,7 +30,6 @@
   "https://github.com/zsh-users/zsh-autosuggestions",
   "https://github.com/dotnet/core",
   "https://github.com/hwdsl2/setup-ipsec-vpn",
-  "https://github.com/tj/git-extras",
   "https://github.com/romkatv/powerlevel10k",
   "https://github.com/source-foundry/Hack",
   "https://github.com/denysdovhan/spaceship-prompt",

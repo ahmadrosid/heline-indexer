@@ -13,22 +13,36 @@ use walkdir::WalkDir;
 
 #[tokio::main]
 pub async fn main() {
+    let mut log = Loading::new();
+    log.start();
     let args: Vec<String> = std::env::args().collect();
     if args.len() == 1 {
-        println!("Please provide path!");
+        log.fail("Please provide path!");
+        log.end();
         std::process::exit(1);
     }
 
     let value = parse_json(&args[1]);
     let mut index = 0;
     for val in value {
+        if index == 1 {
+            break;
+        }
+        index += 1;
         let cwd = "repos";
         let git_url = val.to_string();
-        let paths = git_url.split("/").collect::<Vec<_>>();
+        let paths: Vec<&str> = git_url.split("/").collect();
         let repo_name = paths.last().unwrap();
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
-        // index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await;
 
+        match github::get_repo(&github_repo).await {
+            Ok(_) => {}
+            Err(e) => {
+                log.warn(format!("{}: Error {}", github_repo, e));
+                continue
+            }
+        }
+        log.text(format!("Cloning '{}'", val.to_string()));
         let success = exec_command(
             Command::new("git")
                 .current_dir(cwd)
@@ -37,7 +51,8 @@ pub async fn main() {
                 .arg(repo_name),
         );
         if success {
-            index_directory(&format!("{}/{}", cwd, repo_name), &github_repo).await;
+            let dir = &format!("{}/{}", cwd, repo_name);
+            index_directory(dir, &github_repo, log.to_owned()).await;
             exec_command(
                 Command::new("rm")
                     .current_dir(".")
@@ -45,22 +60,23 @@ pub async fn main() {
                     .arg(format!("{}/{}", cwd, repo_name)),
             );
         } else {
-            println!("Failed to clone {}!", git_url);
-        }
-        index += 1;
-        if index == 1 {
-            std::process::exit(0);
+            log.fail(format!("Failed to clone '{}'!", git_url));
         }
     }
+    log.end();
 }
 
 #[track_caller]
 pub fn exec_command(cmd: &mut Command) -> bool {
     let output = cmd
-        .stderr(Stdio::inherit())
-        .output()
-        .expect("Failed to run command");
-    output.status.success()
+        .stderr(Stdio::null())
+        .output();
+    match output {
+        Ok(out) => {
+            out.status.success()
+        }
+        _ => false
+    }
 }
 
 fn parse_json(path: &str) -> Vec<String> {
@@ -81,11 +97,9 @@ fn parse_json(path: &str) -> Vec<String> {
     result
 }
 
-async fn index_directory(dir: &str, github_repo: &str) {
+async fn index_directory(dir: &str, github_repo: &str, log: Loading) {
     let mut total = 0;
     let username = github_repo.split("/").next().unwrap();
-    let mut log = Loading::new();
-    log.start();
     let branch = get_branch_name(dir);
     exec_command(Command::new("rm").arg("-rf").arg(format!("{}/.git", dir)));
 
@@ -112,7 +126,6 @@ async fn index_directory(dir: &str, github_repo: &str) {
             log.fail(e);
         }
     }
-    log.end();
 }
 
 async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str, log: Loading) {
@@ -164,7 +177,6 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
             index += 1;
             child.push_str(&td.html());
             child.push('\n');
-            // Store as array with length of 5!
             if index >= 8 {
                 index = 0;
                 data.content = vec![];
@@ -176,7 +188,7 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
             }
         }
 
-        // If there any left content that less than 5 line then store it to DB!
+        // If there any left content that less than 8 line then store it to DB!
         if index != 0 {
             data.content = vec![];
             data.content.push(child.to_owned());
