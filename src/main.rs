@@ -1,13 +1,12 @@
 mod github;
 mod solr;
-mod parse;
+mod parser;
 
 use serde_json::Value;
 
 use loading::Loading;
 use select::document::Document;
 use select::predicate::{Class, Name};
-use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use walkdir::WalkDir;
@@ -98,9 +97,9 @@ async fn index_directory(dir: &str, github_repo: &str) {
 
             for entry in dirs {
                 if entry.path().is_file() {
+                    log.text(format!("Indexing {}", entry.path().display()));
                     process_file(&entry.path(), github_repo, &user_id, &branch, log.to_owned()).await;
                     total += 1;
-                    log.text(format!("Indexing {}", entry.path().display()));
                 }
             }
 
@@ -117,9 +116,9 @@ async fn index_directory(dir: &str, github_repo: &str) {
 }
 
 async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str, log: Loading) {
-    match parse.read_file(path) {
+    match parser::read_file(path) {
         Ok((input, lang)) => {
-            let html = parse.render_html(input, lang);
+            let html = parser::render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
             let data = solr::GithubFile {

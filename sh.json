@@ -1,4 +1,5 @@
 [
+  "https://github.com/nvm-sh/nvm",
   "https://github.com/DenizParlak/Zeus",
   "https://github.com/mbadolato/iTerm2-Color-Schemes",
   "https://github.com/pi-hole/pi-hole",
@@ -7,7 +8,6 @@
   "https://github.com/Bash-it/bash-it",
   "https://github.com/rupa/z",
   "https://github.com/tj/n",
-  "https://github.com/nvm-sh/nvm",
   "https://github.com/fatih/color",
   "https://github.com/ahmadrosid/gemoji",
   "https://github.com/ohmyzsh/ohmyzsh",

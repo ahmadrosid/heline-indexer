@@ -2,7 +2,7 @@ use hl::lexers::*;
 use std::fs;
 use std::path::Path;
 
-fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
+pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap_or("");
     if let Ok(source) = fs::read_to_string(path) {
         let input = source.chars().collect();
@@ -45,7 +45,7 @@ fn parse_file_name(file: &str) -> &str {
     };
 }
 
-fn render_html(input: Vec<char>, lang: &str) -> String {
+pub fn render_html(input: Vec<char>, lang: &str) -> String {
     return match lang {
         "Shell" => bash::render::render_html(input),
         "C" => c::render::render_html(input),
@@ -64,6 +64,7 @@ fn render_html(input: Vec<char>, lang: &str) -> String {
         "JavaScript" => javascript::render::render_html(input),
         "JSON" => json::render::render_html(input),
         "Lua" => lua::render::render_html(input),
+        "Makefile" => makefile::render::render_html(input),
         "Markdown" => markdown::render::render_html(input),
         "PHP" => php::render::render_html(input),
         "Python" => python::render::render_html(input),
