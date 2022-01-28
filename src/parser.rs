@@ -27,16 +27,14 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
                 "toml" => "TOML",
                 "cs" => "C#",
                 "yml" | "yaml" => "YAML",
-                "dart"=> "Dart",
+                "dart" => "Dart",
                 "lock" => match file_path.file_name().unwrap().to_str().unwrap() {
-                    "Cargo.lock"  => "TOML",
-                    "Gemfile.lock"  => "Gemfile",
+                    "Cargo.lock" => "TOML",
+                    "Gemfile.lock" => "Gemfile",
                     "yarn.lock" => "YAML",
-                    _ => "Raw"
-                }
-                _ => {
-                    ext.to_str().unwrap()
+                    _ => "Raw",
                 },
+                _ => ext.to_str().unwrap(),
             },
             _ => parse_file_name(file_path.file_name().unwrap().to_str().unwrap()),
         };
@@ -53,7 +51,7 @@ fn parse_file_name(file: &str) -> &str {
         "Makefile" => "Makefile",
         "Gemfile" => "Gemfile",
         "Rakefile" => "Rakefile",
-        _ => "Raw"
+        _ => "Raw",
     };
 }
 
@@ -97,7 +95,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             let mark_bash = String::from("#!/bin/bash");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash{
+                if result == mark_bash {
                     return bash::render::render_html(input);
                 }
             }
@@ -105,7 +103,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             let mark_bash = String::from("#!/usr/bin/env bash");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash{
+                if result == mark_bash {
                     return bash::render::render_html(input);
                 }
             }
@@ -113,7 +111,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             let mark_bash = String::from("#!/usr/bin/env sh");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash{
+                if result == mark_bash {
                     return bash::render::render_html(input);
                 }
             }
@@ -121,7 +119,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             let mark_bash = String::from("#!/usr/bin/env zsh");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash{
+                if result == mark_bash {
                     return bash::render::render_html(input);
                 }
             }
@@ -129,15 +127,23 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             let mark_bash = String::from("#!/usr/bin/env ruby");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash{
+                if result == mark_bash {
                     return ruby::render::render_html(input);
+                }
+            }
+
+            let mark_bash = String::from("#!/usr/bin/env php");
+            if input.len() > mark_bash.len() {
+                let result: String = input[0..mark_bash.len()].iter().collect();
+                if result == mark_bash {
+                    return php::render::render_html(input);
                 }
             }
 
             let mark_bash = String::from("@ruby");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
-                if result == mark_bash{
+                if result == mark_bash {
                     return ruby::render::render_html(input);
                 }
             }

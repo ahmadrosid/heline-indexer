@@ -1,6 +1,6 @@
 mod github;
-mod solr;
 mod parser;
+mod solr;
 
 use serde_json::Value;
 
@@ -39,7 +39,7 @@ pub async fn main() {
             Ok(_) => {}
             Err(e) => {
                 log.warn(format!("{}: Error {}", github_repo, e));
-                continue
+                continue;
             }
         }
         log.text(format!("Cloning '{}'", val.to_string()));
@@ -68,14 +68,10 @@ pub async fn main() {
 
 #[track_caller]
 pub fn exec_command(cmd: &mut Command) -> bool {
-    let output = cmd
-        .stderr(Stdio::null())
-        .output();
+    let output = cmd.stderr(Stdio::null()).output();
     match output {
-        Ok(out) => {
-            out.status.success()
-        }
-        _ => false
+        Ok(out) => out.status.success(),
+        _ => false,
     }
 }
 
@@ -105,14 +101,19 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading) {
 
     match github::get_user_id(username).await {
         Ok(user_id) => {
-            let dirs = WalkDir::new(dir)
-                .into_iter()
-                .filter_map(|v| v.ok());
+            let dirs = WalkDir::new(dir).into_iter().filter_map(|v| v.ok());
 
             for entry in dirs {
                 if entry.path().is_file() {
                     log.text(format!("Indexing {}", entry.path().display()));
-                    process_file(&entry.path(), github_repo, &user_id, &branch, log.to_owned()).await;
+                    process_file(
+                        &entry.path(),
+                        github_repo,
+                        &user_id,
+                        &branch,
+                        log.to_owned(),
+                    )
+                    .await;
                     total += 1;
                 }
             }
@@ -134,7 +135,7 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
             let html = parser::render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
-            let id = [github_repo,&paths[2..paths.len()].to_vec().join("/")].join("/");
+            let id = [github_repo, &paths[2..paths.len()].to_vec().join("/")].join("/");
             let data = solr::GithubFile {
                 id: id.to_owned(),
                 file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
