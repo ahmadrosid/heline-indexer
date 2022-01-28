@@ -25,7 +25,7 @@ pub async fn main() {
     let value = parse_json(&args[1]);
     let mut index = 0;
     for val in value {
-        if index == 1 {
+        if index == 10 {
             break;
         }
         index += 1;
