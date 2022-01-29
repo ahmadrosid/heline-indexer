@@ -261,7 +261,7 @@ dependencies = [
 [[package]]
 name = "hl"
 version = "0.1.1"
-source = "git+https://github.com/ahmadrosid/hl?branch=main#9d4fed7fe3ddff833e36177f6d91eb557eb5776d"
+source = "git+https://github.com/ahmadrosid/hl?branch=main#86d066b20af6f8371650757765ee4b115f25039c"
 dependencies = [
  "clap",
  "yaml-rust",

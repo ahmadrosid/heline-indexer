@@ -40,7 +40,7 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
         };
         Ok((input, lang))
     } else {
-        Err(format!("Failed to read file path {}", path))
+        Err(format!("Failed to read file: '{}'!", path))
     }
 }
 

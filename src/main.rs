@@ -25,7 +25,7 @@ pub async fn main() {
     let value = parse_json(&args[1]);
     let mut index = 0;
     for val in value {
-        if index == 10 {
+        if index == 1 {
             break;
         }
         index += 1;
@@ -173,15 +173,22 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
         let mut index = 0;
+        let mut max_index = 3;
+        let max_chars = 2500;
         let mut child: String = String::new();
         for td in el.find(Name("tr")) {
             index += 1;
             child.push_str(&td.html());
             child.push('\n');
-            if index >= 8 {
+            if index == max_index && child.len() < max_chars {
+                max_index += 1;
+            }
+            if index >= max_index {
                 index = 0;
+                max_index = 3;
                 data.content = vec![];
                 data.content.push(child.to_owned());
+                child = String::new();
                 match solr::insert(&data).await {
                     Ok(_) => {}
                     Err(e) => log.warn(e.to_string()),
