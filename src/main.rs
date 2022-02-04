@@ -15,6 +15,17 @@ use walkdir::WalkDir;
 pub async fn main() {
     let mut log = Loading::new();
     log.start();
+
+    let mut base_url = String::new();
+    match std::env::var("BASE_ENV") {
+        Ok(val) => base_url.push_str(&val),
+        Err(e) => {
+            log.fail(format!("BASE_ENV: {}!", e));
+            log.end();
+            std::process::exit(1);
+        }
+    }
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() == 1 {
         log.fail("Please provide path!");
@@ -52,7 +63,7 @@ pub async fn main() {
         );
         if success {
             let dir = &format!("{}/{}", cwd, repo_name);
-            index_directory(dir, &github_repo, log.to_owned()).await;
+            index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
             exec_command(
                 Command::new("rm")
                     .current_dir(".")
@@ -93,7 +104,7 @@ fn parse_json(path: &str) -> Vec<String> {
     result
 }
 
-async fn index_directory(dir: &str, github_repo: &str, log: Loading) {
+async fn index_directory(dir: &str, github_repo: &str, log: Loading, base_url: &str) {
     let mut total = 0;
     let username = github_repo.split("/").next().unwrap();
     let branch = get_branch_name(dir);
@@ -112,6 +123,7 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading) {
                         &user_id,
                         &branch,
                         log.to_owned(),
+                        base_url
                     )
                     .await;
                     total += 1;
@@ -129,7 +141,7 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading) {
     }
 }
 
-async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str, log: Loading) {
+async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str, log: Loading, base_url: &str) {
     match parser::read_file(path) {
         Ok((input, lang)) => {
             let html = parser::render_html(input, lang);
@@ -146,7 +158,7 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
                 lang: lang.to_string(),
                 content: vec![],
             };
-            store(data, &html, log).await;
+            store(data, &html, log, base_url).await;
         }
         Err(msg) => {
             log.warn(msg);
@@ -168,7 +180,7 @@ fn get_branch_name(dir: &str) -> String {
     };
 }
 
-async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
+async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &str) {
     let document = Document::from(html);
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
@@ -189,7 +201,7 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
                 data.content = vec![];
                 data.content.push(child.to_owned());
                 child = String::new();
-                match solr::insert(&data).await {
+                match solr::insert(&data, base_url).await {
                     Ok(_) => {}
                     Err(e) => log.warn(e.to_string()),
                 }
@@ -200,7 +212,7 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading) {
         if index != 0 {
             data.content = vec![];
             data.content.push(child.to_owned());
-            match solr::insert(&data).await {
+            match solr::insert(&data, base_url).await {
                 Ok(_) => {}
                 Err(e) => log.warn(e.to_string()),
             }
