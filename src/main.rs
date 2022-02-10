@@ -17,10 +17,10 @@ pub async fn main() {
     log.start();
 
     let mut base_url = String::new();
-    match std::env::var("BASE_ENV") {
+    match std::env::var("BASE_URL") {
         Ok(val) => base_url.push_str(&val),
         Err(e) => {
-            log.fail(format!("BASE_ENV: {}!", e));
+            log.fail(format!("BASE_URL: {}!", e));
             log.end();
             std::process::exit(1);
         }
@@ -34,6 +34,7 @@ pub async fn main() {
     }
 
     let value = parse_json(&args[1]);
+
     let mut index = 0;
     for val in value {
         if index == 1 {
@@ -45,34 +46,36 @@ pub async fn main() {
         let paths: Vec<&str> = git_url.split("/").collect();
         let repo_name = paths.last().unwrap();
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
+        let dir = &format!("{}/{}", cwd, repo_name);
+        index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
 
-        match github::get_repo(&github_repo).await {
-            Ok(_) => {}
-            Err(e) => {
-                log.warn(format!("{}: Error {}", github_repo, e));
-                continue;
-            }
-        }
-        log.text(format!("Cloning '{}'", val.to_string()));
-        let success = exec_command(
-            Command::new("git")
-                .current_dir(cwd)
-                .arg("clone")
-                .arg(&val.to_string())
-                .arg(repo_name),
-        );
-        if success {
-            let dir = &format!("{}/{}", cwd, repo_name);
-            index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
-            exec_command(
-                Command::new("rm")
-                    .current_dir(".")
-                    .arg("-rf")
-                    .arg(format!("{}/{}", cwd, repo_name)),
-            );
-        } else {
-            log.fail(format!("Failed to clone '{}'!", git_url));
-        }
+        // match github::get_repo(&github_repo).await {
+        //     Ok(_) => {}
+        //     Err(e) => {
+        //         log.warn(format!("{}: Error {}", github_repo, e));
+        //         continue;
+        //     }
+        // }
+        // log.text(format!("Cloning '{}'", val.to_string()));
+        // let success = exec_command(
+        //     Command::new("git")
+        //         .current_dir(cwd)
+        //         .arg("clone")
+        //         .arg(&val.to_string())
+        //         .arg(repo_name),
+        // );
+        // if success {
+        //     let dir = &format!("{}/{}", cwd, repo_name);
+        //     index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
+        //     exec_command(
+        //         Command::new("rm")
+        //             .current_dir(".")
+        //             .arg("-rf")
+        //             .arg(format!("{}/{}", cwd, repo_name)),
+        //     );
+        // } else {
+        //     log.fail(format!("Failed to clone '{}'!", git_url));
+        // }
     }
     log.end();
 }
@@ -88,7 +91,7 @@ pub fn exec_command(cmd: &mut Command) -> bool {
 
 fn parse_json(path: &str) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
-    let data: String = std::fs::read_to_string(path).unwrap_or("".to_string());
+    let data: String = std::fs::read_to_string(path).unwrap_or(String::new());
     let value: Result<Value, serde_json::Error> = serde_json::from_str(&*data);
     match value {
         Ok(val) => {
@@ -98,7 +101,9 @@ fn parse_json(path: &str) -> Vec<String> {
                 }
             }
         }
-        Err(_) => {}
+        Err(e) => {
+            println!("Got an error! {}", e);
+        }
     }
 
     result
@@ -152,7 +157,7 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
                 id: id.to_owned(),
                 file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
                 owner_id: user_id.to_string(),
-                path: id.to_string(),
+                path: paths[2..paths.len()-1].to_vec().join("/"),
                 repo: github_repo.to_string(),
                 branch: branch.to_owned(),
                 lang: lang.to_string(),
@@ -184,6 +189,7 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &
     let document = Document::from(html);
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
+        let update = false;
         let mut index = 0;
         let mut max_index = 3;
         let max_chars = 2500;
@@ -201,9 +207,16 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &
                 data.content = vec![];
                 data.content.push(child.to_owned());
                 child = String::new();
-                match solr::insert(&data, base_url).await {
-                    Ok(_) => {}
-                    Err(e) => log.warn(e.to_string()),
+                if !update {
+                    match solr::insert(&data, base_url).await {
+                        Ok(_) => {}
+                        Err(e) => log.warn(e.to_string()),
+                    }
+                } else {
+                    match solr::update(&data, base_url).await {
+                        Ok(_) => {}
+                        Err(e) => log.warn(e.to_string()),
+                    }
                 }
             }
         }
