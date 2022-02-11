@@ -38,7 +38,7 @@ pub async fn main() {
 
     let mut index = 0;
     for val in value {
-        if index == 1 {
+        if index == 100 {
             break;
         }
         index += 1;
@@ -210,7 +210,7 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &
         let mut update = false;
         let mut index = 0;
         let mut max_index = 3;
-        let max_chars = 2500;
+        let max_chars = 2000;
         let mut child: String = String::new();
         for td in el.find(Name("tr")) {
             index += 1;
