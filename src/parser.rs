@@ -20,7 +20,7 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
                 "java" => "Java",
                 "kt" => "Kotlin",
                 "lua" => "Lua",
-                "md" => "Markdown",
+                "md" | "adoc" => "Markdown",
                 "nim" => "Nim",
                 "py" => "Python",
                 "php" => "PHP",

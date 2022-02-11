@@ -4,6 +4,7 @@ mod solr;
 
 use serde_json::Value;
 
+use crate::solr::GithubFile;
 use loading::Loading;
 use select::document::Document;
 use select::predicate::{Class, Name};
@@ -47,37 +48,54 @@ pub async fn main() {
         let repo_name = paths.last().unwrap();
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
         let dir = &format!("{}/{}", cwd, repo_name);
-        index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
 
-        // match github::get_repo(&github_repo).await {
-        //     Ok(_) => {}
-        //     Err(e) => {
-        //         log.warn(format!("{}: Error {}", github_repo, e));
-        //         continue;
-        //     }
-        // }
-        // log.text(format!("Cloning '{}'", val.to_string()));
-        // let success = exec_command(
-        //     Command::new("git")
-        //         .current_dir(cwd)
-        //         .arg("clone")
-        //         .arg(&val.to_string())
-        //         .arg(repo_name),
-        // );
-        // if success {
-        //     let dir = &format!("{}/{}", cwd, repo_name);
-        //     index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
-        //     exec_command(
-        //         Command::new("rm")
-        //             .current_dir(".")
-        //             .arg("-rf")
-        //             .arg(format!("{}/{}", cwd, repo_name)),
-        //     );
-        // } else {
-        //     log.fail(format!("Failed to clone '{}'!", git_url));
-        // }
+        if args.len() == 3 && args[2] == "--folder" {
+            index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
+        } else {
+            match github::get_repo(&github_repo).await {
+                Ok(_) => {}
+                Err(e) => {
+                    log.warn(format!("{}: Error {}", github_repo, e));
+                    continue;
+                }
+            }
+            log.text(format!("Cloning '{}'", val.to_string()));
+            let success = exec_command(
+                Command::new("git")
+                    .current_dir(cwd)
+                    .arg("clone")
+                    .arg(&val.to_string())
+                    .arg(repo_name),
+            );
+            if success {
+                let dir = &format!("{}/{}", cwd, repo_name);
+                index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
+                exec_command(
+                    Command::new("rm")
+                        .current_dir(".")
+                        .arg("-rf")
+                        .arg(format!("{}/{}", cwd, repo_name)),
+                );
+            } else {
+                log.fail(format!("Failed to clone '{}'!", git_url));
+            }
+        }
     }
     log.end();
+}
+
+fn get_branch_name(dir: &str) -> String {
+    let file_path = [dir, ".git/HEAD"].join("/");
+    return match std::fs::read_to_string(file_path) {
+        Ok(file) => file
+            .split("/")
+            .last()
+            .unwrap()
+            .to_string()
+            .trim_end_matches('\n')
+            .to_string(),
+        Err(_) => "master".to_string(),
+    };
 }
 
 #[track_caller]
@@ -128,17 +146,24 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading, base_url: &
                         &user_id,
                         &branch,
                         log.to_owned(),
-                        base_url
+                        base_url,
                     )
                     .await;
                     total += 1;
                 }
             }
 
-            log.success(format!(
-                "Done indexing '{}' total {} files!",
-                github_repo, total
-            ));
+            if total == 0 {
+                log.fail(format!(
+                    "Folder '{}' not found!",
+                    github_repo
+                ));
+            } else {
+                log.success(format!(
+                    "Done indexing '{}' total {} files!",
+                    github_repo, total
+                ));
+            }
         }
         Err(e) => {
             log.fail(e);
@@ -146,7 +171,14 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading, base_url: &
     }
 }
 
-async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &str, log: Loading, base_url: &str) {
+async fn process_file(
+    path: &Path,
+    github_repo: &str,
+    user_id: &str,
+    branch: &str,
+    log: Loading,
+    base_url: &str,
+) {
     match parser::read_file(path) {
         Ok((input, lang)) => {
             let html = parser::render_html(input, lang);
@@ -157,11 +189,11 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
                 id: id.to_owned(),
                 file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
                 owner_id: user_id.to_string(),
-                path: paths[2..paths.len()-1].to_vec().join("/"),
+                path: paths[2..paths.len() - 1].to_vec().join("/"),
                 repo: github_repo.to_string(),
                 branch: branch.to_owned(),
                 lang: lang.to_string(),
-                content: vec![],
+                content: Vec::new(),
             };
             store(data, &html, log, base_url).await;
         }
@@ -171,25 +203,11 @@ async fn process_file(path: &Path, github_repo: &str, user_id: &str, branch: &st
     }
 }
 
-fn get_branch_name(dir: &str) -> String {
-    let file_path = [dir, ".git/HEAD"].join("/");
-    return match std::fs::read_to_string(file_path) {
-        Ok(file) => file
-            .split("/")
-            .last()
-            .unwrap()
-            .to_string()
-            .trim_end_matches('\n')
-            .to_string(),
-        Err(_) => "master".to_string(),
-    };
-}
-
 async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &str) {
     let document = Document::from(html);
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
-        let update = false;
+        let mut update = false;
         let mut index = 0;
         let mut max_index = 3;
         let max_chars = 2500;
@@ -205,30 +223,32 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &
                 index = 0;
                 max_index = 3;
                 data.content = vec![];
-                data.content.push(child.to_owned());
+                data.content.push(child.to_string());
                 child = String::new();
-                if !update {
-                    match solr::insert(&data, base_url).await {
-                        Ok(_) => {}
-                        Err(e) => log.warn(e.to_string()),
-                    }
-                } else {
-                    match solr::update(&data, base_url).await {
-                        Ok(_) => {}
-                        Err(e) => log.warn(e.to_string()),
-                    }
-                }
+                create_or_update(&mut update, &data, base_url, log.to_owned()).await;
             }
         }
 
         // If there any left content that less than 8 line then store it to DB!
         if index != 0 {
             data.content = vec![];
-            data.content.push(child.to_owned());
-            match solr::insert(&data, base_url).await {
-                Ok(_) => {}
-                Err(e) => log.warn(e.to_string()),
-            }
+            data.content.push(child.to_string());
+            create_or_update(&mut update, &data, base_url, log.to_owned()).await;
+        }
+    }
+}
+
+async fn create_or_update(update: &mut bool, data: &GithubFile, base_url: &str, log: Loading) {
+    if *update == false {
+        match solr::insert(&data, base_url).await {
+            Ok(_) => {}
+            Err(e) => log.warn(e.to_string()),
+        }
+        *update = true;
+    } else {
+        match solr::update(&data, base_url).await {
+            Ok(_) => {}
+            Err(e) => log.warn(e.to_string()),
         }
     }
 }

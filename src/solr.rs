@@ -12,10 +12,24 @@ pub struct GithubFile {
     pub content: Vec<String>,
 }
 
+#[derive(Serialize, Clone, Debug)]
+pub struct GithubFileUpdate {
+    pub id: String,
+    pub content: AddString,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct AddString {
+    pub add: Vec<String>,
+}
+
 pub async fn insert(data: &GithubFile, base_url: &str) -> Result<String, reqwest::Error> {
     let mut body: Vec<GithubFile> = Vec::new();
     body.push(data.clone());
-    let url = format!("{}/solr/heline/update?&commitWithin=1000&overwrite=false&wt=json", base_url);
+    let url = format!(
+        "{}/solr/heline/update?&commitWithin=1000&overwrite=false&wt=json",
+        base_url
+    );
     let client = reqwest::Client::new();
     let res = client.post(url).json(&body).send().await?;
     let json = res.text().await?;
@@ -23,9 +37,16 @@ pub async fn insert(data: &GithubFile, base_url: &str) -> Result<String, reqwest
 }
 
 pub async fn update(data: &GithubFile, base_url: &str) -> Result<String, reqwest::Error> {
-    let mut body: Vec<GithubFile> = Vec::new();
-    body.push(data.clone());
-    let url = format!("{}/solr/heline/update?&commitWithin=1000&overwrite=false&wt=json", base_url);
+    let data = data.clone();
+    let mut body: Vec<GithubFileUpdate> = Vec::new();
+    let update = GithubFileUpdate {
+        id: data.id,
+        content: AddString { add: data.content },
+    };
+    // println!("{}", serde_json::to_string_pretty(&update).unwrap());
+
+    body.push(update);
+    let url = format!("{}/solr/heline/update", base_url);
     let client = reqwest::Client::new();
     let res = client.post(url).json(&body).send().await?;
     let json = res.text().await?;
