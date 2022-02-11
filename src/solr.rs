@@ -43,7 +43,6 @@ pub async fn update(data: &GithubFile, base_url: &str) -> Result<String, reqwest
         id: data.id,
         content: AddString { add: data.content },
     };
-    // println!("{}", serde_json::to_string_pretty(&update).unwrap());
 
     body.push(update);
     let url = format!("{}/solr/heline/update", base_url);
