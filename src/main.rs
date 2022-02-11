@@ -181,6 +181,10 @@ async fn process_file(
 ) {
     match parser::read_file(path) {
         Ok((input, lang)) => {
+            if input.len() == 0 {
+                return;
+            }
+
             let html = parser::render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
