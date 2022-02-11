@@ -5,6 +5,10 @@ use std::path::Path;
 pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap_or("");
     if let Ok(source) = fs::read_to_string(path) {
+        if source.len() == 0  || source.len() > 100_000 {
+            return Err(format!("Failed to read file: '{}'!", path))
+        }
+
         let input = source.chars().collect();
         let lang = match file_path.extension() {
             Some(ext) => match ext.to_str().unwrap_or("Raw") {
