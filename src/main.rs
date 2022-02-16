@@ -27,14 +27,21 @@ pub async fn main() {
         }
     }
 
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() == 1 {
-        log.fail("Please provide path!");
-        log.end();
-        std::process::exit(1);
-    }
+    let file = match std::env::args().nth(1) {
+        Some(file) => file,
+        None => {
+            log.fail("Please provide path!");
+            log.end();
+            std::process::exit(1);
+        }
+    };
 
-    let value = parse_json(&args[1]);
+    let option = match std::env::args().nth(2) {
+        Some(option) => option,
+        None => "".to_string()
+    };
+
+    let value = parse_json(&file);
 
     let mut index = 0;
     for val in value {
@@ -49,7 +56,7 @@ pub async fn main() {
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
         let dir = &format!("{}/{}", cwd, repo_name);
 
-        if args.len() == 3 && args[2] == "--folder" {
+        if option == "--folder" {
             index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
         } else {
             match github::get_repo(&github_repo).await {
