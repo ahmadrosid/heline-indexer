@@ -38,8 +38,14 @@ pub async fn main() {
 
     let option = match std::env::args().nth(2) {
         Some(option) => option,
-        None => "".to_string()
+        None => String::new()
     };
+
+    if !Path::new(&file).exists() {
+        let cwd = std::env::current_dir().unwrap();
+        log.fail(format!("File not exists: {}/{}", cwd.as_path().display(), file));
+        std::process::exit(1);
+    }
 
     let value = parse_json(&file);
 
