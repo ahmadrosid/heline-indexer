@@ -3,11 +3,18 @@ use std::fs;
 use std::path::Path;
 
 pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
-    let path = file_path.to_str().unwrap_or("");
+    let path = file_path.to_str().unwrap();
+    if let Some(name) = file_path.file_name().unwrap().to_str() {
+        match name {
+            "package-lock.json" => return Err(format!("Ignore file: '{}'!", path)),
+            "yarn.lock" => return Err(format!("Ignore file: '{}'!", path)),
+            _ => {}
+        }
+    }
+
     if let Ok(source) = fs::read_to_string(path) {
-        // Ignore empty file or file with more than 200k chars!
-        if source.len() == 0  || source.len() > 200_000 {
-            return Err(format!("Failed to read file: '{}'!", path))
+        if source.len() == 0 {
+            return Err(format!("Failed to read file: '{}'!", path));
         }
 
         let input = source.chars().collect();
