@@ -6,6 +6,7 @@ use serde_json::Value;
 
 use crate::solr::GithubFile;
 use loading::Loading;
+use reqwest::Url;
 use select::document::Document;
 use select::predicate::{Class, Name};
 use std::path::Path;
@@ -38,20 +39,31 @@ pub async fn main() {
 
     let option = match std::env::args().nth(2) {
         Some(option) => option,
-        None => String::new()
+        None => String::new(),
     };
 
-    if !Path::new(&file).exists() {
-        let cwd = std::env::current_dir().unwrap();
-        log.fail(format!("File not exists: {}/{}", cwd.as_path().display(), file));
-        std::process::exit(1);
+    let mut value: Vec<String> = vec![];
+
+    match Url::parse(&file) {
+        Ok(_) => value.push(file.to_string()),
+        Err(_) => {
+            if !Path::new(&file).exists() {
+                let cwd = std::env::current_dir().unwrap();
+                log.fail(format!(
+                    "File not exists: {}/{}",
+                    cwd.as_path().display(),
+                    file
+                ));
+                std::process::exit(1);
+            }
+            value = parse_json(&file)
+        }
     }
 
-    let value = parse_json(&file);
-
     let mut index = 0;
+    let max_index = 1;
     for val in value {
-        if index == 100 {
+        if index == max_index {
             break;
         }
         index += 1;
@@ -62,35 +74,38 @@ pub async fn main() {
         let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
         let dir = &format!("{}/{}", cwd, repo_name);
 
-        if option == "--folder" {
-            index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
-        } else {
-            match github::get_repo(&github_repo).await {
-                Ok(_) => {}
-                Err(e) => {
-                    log.warn(format!("{}: Error {}", github_repo, e));
-                    continue;
+        match &option[..] {
+            "--folder" => index_directory(dir, &github_repo, log.to_owned(), &base_url).await,
+            _ => {
+                match github::get_repo(&github_repo).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log.warn(format!("{}: Error {}", github_repo, e));
+                        continue;
+                    }
                 }
-            }
-            log.text(format!("Cloning '{}'", val.to_string()));
-            let success = exec_command(
-                Command::new("git")
-                    .current_dir(cwd)
-                    .arg("clone")
-                    .arg(&val.to_string())
-                    .arg(repo_name),
-            );
-            if success {
-                let dir = &format!("{}/{}", cwd, repo_name);
-                index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
-                exec_command(
-                    Command::new("rm")
-                        .current_dir(".")
-                        .arg("-rf")
-                        .arg(format!("{}/{}", cwd, repo_name)),
+
+                log.text(format!("Cloning '{}'", val.to_string()));
+                let success = exec_command(
+                    Command::new("git")
+                        .current_dir(cwd)
+                        .arg("clone")
+                        .arg(&val.to_string())
+                        .arg(repo_name),
                 );
-            } else {
-                log.fail(format!("Failed to clone '{}'!", git_url));
+
+                if success {
+                    let dir = &format!("{}/{}", cwd, repo_name);
+                    index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
+                    exec_command(
+                        Command::new("rm")
+                            .current_dir(".")
+                            .arg("-rf")
+                            .arg(format!("{}/{}", cwd, repo_name)),
+                    );
+                } else {
+                    log.fail(format!("Failed to clone: {}", git_url));
+                }
             }
         }
     }
@@ -167,10 +182,7 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading, base_url: &
             }
 
             if total == 0 {
-                log.fail(format!(
-                    "Folder '{}' not found!",
-                    github_repo
-                ));
+                log.fail(format!("Folder '{}' not found!", github_repo));
             } else {
                 log.success(format!(
                     "Done indexing '{}' total {} files!",
