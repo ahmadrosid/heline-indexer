@@ -96,7 +96,7 @@ pub async fn main() {
 
                 if success {
                     let dir = &format!("{}/{}", cwd, repo_name);
-                    let _ = index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
+                    index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
                     exec_command(
                         Command::new("rm")
                             .current_dir(".")
