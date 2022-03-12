@@ -5,13 +5,13 @@ mod solr;
 use serde_json::Value;
 
 use crate::solr::GithubFile;
+use ignore::Walk;
 use loading::Loading;
 use reqwest::Url;
 use select::document::Document;
 use select::predicate::{Class, Name};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use walkdir::WalkDir;
 
 #[tokio::main]
 pub async fn main() {
@@ -96,7 +96,7 @@ pub async fn main() {
 
                 if success {
                     let dir = &format!("{}/{}", cwd, repo_name);
-                    index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
+                    let _ = index_directory(dir, &github_repo, log.to_owned(), &base_url).await;
                     exec_command(
                         Command::new("rm")
                             .current_dir(".")
@@ -163,7 +163,7 @@ async fn index_directory(dir: &str, github_repo: &str, log: Loading, base_url: &
 
     match github::get_user_id(username).await {
         Ok(user_id) => {
-            let dirs = WalkDir::new(dir).into_iter().filter_map(|v| v.ok());
+            let dirs = Walk::new(dir).into_iter().filter_map(|v| v.ok());
 
             for entry in dirs {
                 if entry.path().is_file() {
