@@ -254,7 +254,7 @@ async fn store(mut data: solr::GithubFile, html: &str, log: Loading, base_url: &
             }
         }
 
-        // If there any left content that less than 8 line then store it to DB!
+        // If there any left content that less than `max_index` line then store it to DB!
         if index != 0 {
             data.content = vec![];
             data.content.push(child.to_string());
