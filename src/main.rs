@@ -61,7 +61,7 @@ pub async fn main() {
     }
 
     let mut index = 0;
-    let max_index = 1;
+    let max_index = 100;
     for val in value {
         if index == max_index {
             break;
@@ -75,7 +75,9 @@ pub async fn main() {
         let dir = &format!("{}/{}", cwd, repo_name);
 
         match &option[..] {
-            "--folder" => index_directory(dir, &github_repo, log.to_owned(), &base_url).await,
+            "--folder" => {
+                index_directory(&dir, &github_repo, log.to_owned(), &base_url).await
+            },
             _ => {
                 match github::get_repo(&github_repo).await {
                     Ok(_) => {}

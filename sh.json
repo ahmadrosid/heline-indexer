@@ -1,4 +1,5 @@
 [
+  "https://github.com/asdf-vm/asdf",
   "https://github.com/ahmadrosid/gemoji",
   "https://github.com/tailwindlabs/tailwindcss",
   "https://github.com/libgdx/libgdx",
@@ -36,7 +37,6 @@
   "https://github.com/lewagon/dotfiles",
   "https://github.com/k4m4/terminals-are-sexy",
   "https://github.com/learnbyexample/Command-line-text-processing",
-  "https://github.com/asdf-vm/asdf",
   "https://github.com/foxlet/macOS-Simple-KVM",
   "https://github.com/ansible/ansible-examples",
   "https://github.com/RetroPie/RetroPie-Setup",
