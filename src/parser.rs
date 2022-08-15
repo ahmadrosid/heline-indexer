@@ -1,4 +1,3 @@
-use hl::lexers::*;
 use std::fs;
 use std::path::Path;
 
@@ -72,40 +71,40 @@ fn parse_file_name(file: &str) -> &str {
 
 pub fn render_html(input: Vec<char>, lang: &str) -> String {
     return match lang {
-        "Shell" => bash::render::render_html(input),
-        "C" => c::render::render_html(input),
-        "C++" => cpp::render::render_html(input),
-        "Clojure" => clojure::render::render_html(input),
-        "CSS" => css::render::render_html(input),
-        "CUDA" => cuda::render::render_html(input),
-        "Dart" => dart::render::render_html(input),
-        "edn" => edn::render::render_html(input),
-        "Go" => go::render::render_html(input),
-        "Groovy" => groovy::render::render_html(input),
-        "Haskell" => haskell::render::render_html(input),
-        "HTML" => html::render::render_html(input),
-        "Ruby" | "Rakefile" | "Gemfile" => ruby::render::render_html(input),
-        "Rust" => rust::render::render_html(input),
-        "C#" => cs::render::render_html(input),
-        "Java" => java::render::render_html(input),
-        "JavaScript" => javascript::render::render_html(input),
-        "JSON" => json::render::render_html(input),
-        "Kotlin" => kotlin::render::render_html(input),
-        "Lua" => lua::render::render_html(input),
-        "Makefile" => makefile::render::render_html(input),
-        "Markdown" => markdown::render::render_html(input),
-        "Nim" => nim::render::render_html(input),
-        "PHP" => php::render::render_html(input),
-        "Python" => python::render::render_html(input),
-        "TOML" => toml::render::render_html(input),
-        "TypeScript" => typescript::render::render_html(input),
-        "YAML" => yaml::render::render_html(input),
+        "Shell" => hl_core::render_html(input, "bash"),
+        "C" => hl_core::render_html(input, "c"),
+        "C++" => hl_core::render_html(input, "cpp"),
+        "Clojure" => hl_core::render_html(input, "clojure"),
+        "CSS" => hl_core::render_html(input, "css"),
+        "CUDA" => hl_core::render_html(input, "cuda"),
+        "Dart" => hl_core::render_html(input, "dart"),
+        "edn" => hl_core::render_html(input, "edn"),
+        "Go" => hl_core::render_html(input, "go"),
+        "Groovy" => hl_core::render_html(input, "groovy"),
+        "Haskell" => hl_core::render_html(input, "haskell"),
+        "HTML" => hl_core::render_html(input, "html"),
+        "Ruby" | "Rakefile" | "Gemfile" => hl_core::render_html(input, "ruby"),
+        "Rust" => hl_core::render_html(input, "rust"),
+        "C#" => hl_core::render_html(input, "cs"),
+        "Java" => hl_core::render_html(input, "java"),
+        "JavaScript" => hl_core::render_html(input, "js"),
+        "JSON" => hl_core::render_html(input, "json"),
+        "Kotlin" => hl_core::render_html(input, "kotlin"),
+        "Lua" => hl_core::render_html(input, "lua"),
+        "Makefile" => hl_core::render_html(input, "makefile"),
+        "Markdown" => hl_core::render_html(input, "markdown"),
+        "Nim" => hl_core::render_html(input, "nim"),
+        "PHP" => hl_core::render_html(input, "php"),
+        "Python" => hl_core::render_html(input, "python"),
+        "TOML" => hl_core::render_html(input, "toml"),
+        "TypeScript" => hl_core::render_html(input, "typescript"),
+        "YAML" => hl_core::render_html(input, "yaml"),
         _ => {
             let mark_bash = String::from("#!/bin/sh");
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return bash::render::render_html(input);
+                    return hl_core::render_html(input, "bash");
                 }
             }
 
@@ -113,7 +112,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return bash::render::render_html(input);
+                    return hl_core::render_html(input, "bash");
                 }
             }
 
@@ -121,7 +120,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return bash::render::render_html(input);
+                    return hl_core::render_html(input, "bash");
                 }
             }
 
@@ -129,7 +128,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return bash::render::render_html(input);
+                    return hl_core::render_html(input, "bash");
                 }
             }
 
@@ -137,7 +136,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return bash::render::render_html(input);
+                    return hl_core::render_html(input, "bash");
                 }
             }
 
@@ -145,7 +144,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return ruby::render::render_html(input);
+                    return hl_core::render_html(input, "ruby");
                 }
             }
 
@@ -153,7 +152,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return php::render::render_html(input);
+                    return hl_core::render_html(input, "php");
                 }
             }
 
@@ -161,11 +160,11 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
             if input.len() > mark_bash.len() {
                 let result: String = input[0..mark_bash.len()].iter().collect();
                 if result == mark_bash {
-                    return ruby::render::render_html(input);
+                    return hl_core::render_html(input, "ruby");
                 }
             }
 
-            raw::render::render_html(input)
+            return hl_core::render_html(input, "raw");
         }
     };
 }
