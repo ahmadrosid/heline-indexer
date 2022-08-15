@@ -29,3 +29,12 @@ pub fn parse_json(path: &str) -> Vec<String> {
 
     result
 }
+
+pub fn delete_dir(dir_path: &str) {
+    exec_command(
+        Command::new("rm")
+            .current_dir(".")
+            .arg("-rf")
+            .arg(dir_path),
+    );
+}

@@ -1,5 +1,7 @@
 pub mod github;
 
+use crate::utils;
+use std::process::Command;
 
 pub fn get_branch_name(dir: &str) -> String {
     let file_path = [dir, ".git/HEAD"].join("/");
@@ -13,4 +15,15 @@ pub fn get_branch_name(dir: &str) -> String {
             .to_string(),
         Err(_) => "master".to_string(),
     };
+}
+
+
+pub fn clone_repo(cwd: &str, repo_url: &str, repo_name: &str) -> bool {
+    utils::exec_command(
+        Command::new("git")
+            .current_dir(cwd)
+            .arg("clone")
+            .arg(repo_url)
+            .arg(repo_name),
+    )
 }

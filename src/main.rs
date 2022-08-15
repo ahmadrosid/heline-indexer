@@ -6,7 +6,6 @@ mod solr;
 
 use std::path::Path;
 use reqwest::Url;
-use std::process::Command;
 
 #[tokio::main]
 pub async fn main() {
@@ -78,23 +77,12 @@ pub async fn main() {
                 }
 
                 print!("{}\n", format!("Cloning '{}'", val.to_string()));
-                let success = utils::exec_command(
-                    Command::new("git")
-                        .current_dir(cwd)
-                        .arg("clone")
-                        .arg(&val.to_string())
-                        .arg(repo_name),
-                );
+                let success = git::clone_repo(cwd, &val, &repo_name);
 
                 if success {
                     let dir = &format!("{}/{}", cwd, repo_name);
                     indexer::index_directory(dir, &github_repo, &base_url).await;
-                    utils::exec_command(
-                        Command::new("rm")
-                            .current_dir(".")
-                            .arg("-rf")
-                            .arg(format!("{}/{}", cwd, repo_name)),
-                    );
+                    utils::delete_dir(&format!("{}/{}", cwd, repo_name));
                 } else {
                     print!("{}\n", format!("Failed to clone: {}", git_url));
                 }
