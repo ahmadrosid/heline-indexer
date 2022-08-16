@@ -16,6 +16,10 @@ pub fn read_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
             return Err(format!("Failed to read file: '{}'!", path));
         }
 
+        if source.len() <= 5 {
+            return Err(format!("Source code to short: {}", source));
+        }
+
         let input = source.chars().collect();
         let lang = match file_path.extension() {
             Some(ext) => match ext.to_str().unwrap_or("Raw") {
