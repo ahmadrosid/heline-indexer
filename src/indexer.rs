@@ -10,20 +10,21 @@ use select::document::Document;
 use select::predicate::{Class, Name};
 
 pub async fn process(repo_dir: &PathBuf, git_url: &str, base_url: &str) {
+    let git_host = utils::get_url_host(git_url).unwrap_or("github.com".to_string());
     let repo_name = utils::get_repo_name(git_url);
     let git_repo = utils::get_git_repo_path(git_url);
     let ssh_url = utils::get_git_ssh_url(git_url);
     let success = git::clone_repo(repo_dir, &ssh_url, &repo_name);
 
     if success {
-        index_directory(repo_dir, &git_repo, &base_url).await;
-        utils::delete_dir(&repo_dir.join(Path::new(&git_repo)));
+        index_directory(repo_dir, &git_repo, &base_url, &git_host).await;
+        utils::delete_dir(&repo_dir.join(Path::new(&repo_name)));
     } else {
         print!("{}\n", format!("Failed to clone: {}", ssh_url));
     }
 }
 
-pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str) {
+pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str, git_host: &str) {
     let mut total = 0;
     let git_repo = utils::get_git_repo_path(git_url);
     let username = git_repo.split("/").next().unwrap();
@@ -42,6 +43,7 @@ pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str) {
                         &user_id,
                         &branch,
                         base_url,
+                        git_host,
                     )
                     .await;
                     total += 1;
@@ -66,26 +68,27 @@ pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str) {
 
 async fn process_file(
     path: &Path,
-    github_repo: &str,
+    git_repo: &str,
     user_id: &str,
     branch: &str,
     base_url: &str,
+    git_host: &str,
 ) {
     match parser::read_file(path) {
         Ok((input, lang)) => {
             let html = parser::render_html(input, lang);
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
-            let id = [github_repo, &paths[2..paths.len()].to_vec().join("/")].join("/");
+            let id = [git_repo, &paths[2..paths.len()].to_vec().join("/")].join("/");
             let data = GitFile {
                 id: id.to_owned(),
-                file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
+                file_id: format!("{}/{}/{}", git_host, git_repo, file_path.to_string()),
                 owner_id: user_id.to_string(),
                 path: paths[2..paths.len() - 1].to_vec().join("/"),
-                repo: github_repo.to_string(),
+                repo: git_repo.to_string(),
                 branch: branch.to_owned(),
                 lang: lang.to_string(),
-                content: Vec::new(),
+                content: Vec::new()
             };
             store(data, &html, base_url).await;
         }

@@ -60,7 +60,8 @@ pub async fn main() {
 
         match &option[..] {
             "--folder" => {
-                indexer::index_directory(&repository_directory, &git_url, &base_url).await
+                let git_host = utils::get_url_host(&git_url).unwrap_or("github.com".to_string());
+                indexer::index_directory(&repository_directory, &git_url, &base_url, &git_host).await
             },
             _ => {
                 match git::get_repo(&git_url).await {

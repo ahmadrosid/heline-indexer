@@ -39,6 +39,7 @@ pub fn parse_json(path: &str) -> Vec<String> {
 }
 
 pub fn delete_dir(dir_path: &PathBuf) {
+    println!("Deleting: {}", dir_path.display());
     match std::fs::remove_dir_all(dir_path) {
         Ok(_) => {}
         Err(err) => println!("Failed to delete dir, {}", err)

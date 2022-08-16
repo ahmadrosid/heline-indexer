@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), String> {
+pub fn read_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap();
     if let Some(name) = file_path.file_name().unwrap().to_str() {
         match name {
@@ -42,6 +42,7 @@ pub fn read_file(file_path: &Path) -> core::result::Result<(Vec<char>, &str), St
                 "yml" | "yaml" => "YAML",
                 "dart" => "Dart",
                 "patch" => "Diff",
+                "json" => "JSON",
                 "lock" => match file_path.file_name().unwrap().to_str().unwrap() {
                     "Cargo.lock" => "TOML",
                     "Gemfile.lock" => "Gemfile",
@@ -87,7 +88,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
         "Rust" => hl_core::render_html(input, "rust"),
         "C#" => hl_core::render_html(input, "cs"),
         "Java" => hl_core::render_html(input, "java"),
-        "JavaScript" => hl_core::render_html(input, "js"),
+        "JavaScript" => hl_core::render_html(input, "javascript"),
         "JSON" => hl_core::render_html(input, "json"),
         "Kotlin" => hl_core::render_html(input, "kotlin"),
         "Lua" => hl_core::render_html(input, "lua"),
