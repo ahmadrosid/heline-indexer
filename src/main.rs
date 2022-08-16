@@ -51,41 +51,27 @@ pub async fn main() {
 
     let mut index = 0;
     let max_index = 100;
-    for val in value {
+    for git_url in value {
         if index == max_index {
             break;
         }
         index += 1;
-        let cwd = "repos";
-        let git_url = val.to_string();
-        let paths: Vec<&str> = git_url.split("/").collect();
-        let repo_name = paths.last().unwrap();
-        let github_repo = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
-        let dir = &format!("{}/{}", cwd, repo_name);
+
+        let mut repository_directory = std::env::current_dir().expect("Failed to get current directory");
+        repository_directory.push("repos");
 
         match &option[..] {
             "--folder" => {
-                indexer::index_directory(&dir, &github_repo, &base_url).await
+                indexer::index_directory(&repository_directory, &git_url, &base_url).await
             },
             _ => {
-                match git::github::get_repo(&github_repo).await {
-                    Ok(_) => {}
+                match git::get_repo(&git_url).await {
+                    Ok(_repo_id) => indexer::process(&repository_directory, &git_url, &base_url).await,
                     Err(e) => {
-                        print!("{}\n", format!("{}: Error {}", github_repo, e));
+                        print!("{}\n", format!("{}: Error {}", git_url, e));
                         continue;
                     }
-                }
-
-                print!("{}\n", format!("Cloning '{}'", val.to_string()));
-                let success = git::clone_repo(cwd, &val, &repo_name);
-
-                if success {
-                    let dir = &format!("{}/{}", cwd, repo_name);
-                    indexer::index_directory(dir, &github_repo, &base_url).await;
-                    utils::delete_dir(&format!("{}/{}", cwd, repo_name));
-                } else {
-                    print!("{}\n", format!("Failed to clone: {}", git_url));
-                }
+                };
             }
         }
     }

@@ -1,23 +1,35 @@
-use crate::git::github;
-use crate::git::get_branch_name;
-use crate::utils::exec_command;
 use crate::solr;
 use crate::parser;
-use std::process::Command;
-use ignore::Walk;
-use std::path::Path;
-
+use crate::git;
+use crate::utils;
 use crate::solr::GithubFile;
+
+use ignore::Walk;
+use std::path::{Path, PathBuf};
 use select::document::Document;
 use select::predicate::{Class, Name};
 
-pub async fn index_directory(dir: &str, github_repo: &str, base_url: &str) {
-    let mut total = 0;
-    let username = github_repo.split("/").next().unwrap();
-    let branch = get_branch_name(dir);
-    exec_command(Command::new("rm").arg("-rf").arg(format!("{}/.git", dir)));
+pub async fn process(repo_dir: &PathBuf, git_url: &str, base_url: &str) {
+    let repo_name = utils::get_repo_name(git_url);
+    let git_repo = utils::get_git_repo_path(git_url);
+    let ssh_url = utils::get_git_ssh_url(git_url);
+    let success = git::clone_repo(repo_dir, &ssh_url, &repo_name);
 
-    match github::get_user_id(username).await {
+    if success {
+        index_directory(repo_dir, &git_repo, &base_url).await;
+        utils::delete_dir(&repo_dir.join(Path::new(&git_repo)));
+    } else {
+        print!("{}\n", format!("Failed to clone: {}", ssh_url));
+    }
+}
+
+pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str) {
+    let mut total = 0;
+    let git_repo = utils::get_git_repo_path(git_url);
+    let username = git_repo.split("/").next().unwrap();
+    let branch = git::get_branch_name(dir);
+
+    match git::github::get_user_id(username).await {
         Ok(user_id) => {
             let dirs = Walk::new(dir).into_iter().filter_map(|v| v.ok());
 
@@ -26,7 +38,7 @@ pub async fn index_directory(dir: &str, github_repo: &str, base_url: &str) {
                     print!("{}\n", format!("Indexing {}", entry.path().display()));
                     process_file(
                         &entry.path(),
-                        github_repo,
+                        &git_repo,
                         &user_id,
                         &branch,
                         base_url,
@@ -37,11 +49,11 @@ pub async fn index_directory(dir: &str, github_repo: &str, base_url: &str) {
             }
 
             if total == 0 {
-                print!("{}\n", format!("Folder '{}' not found!", github_repo));
+                print!("{}\n", format!("Folder '{}' not found!", git_repo));
             } else {
                 print!("{}", format!(
                     "Done indexing '{}' total {} files!",
-                    github_repo, total
+                    git_repo, total
                 ));
             }
         }
