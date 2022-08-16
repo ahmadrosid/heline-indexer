@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Serialize, Clone, Debug)]
-pub struct GithubFile {
+pub struct GitFile {
     pub id: String,
     pub file_id: String,
     pub owner_id: String,
@@ -23,8 +23,8 @@ pub struct AddString {
     pub add: Vec<String>,
 }
 
-pub async fn insert(data: &GithubFile, base_url: &str) -> Result<String, reqwest::Error> {
-    let mut body: Vec<GithubFile> = Vec::new();
+pub async fn insert(data: &GitFile, base_url: &str) -> Result<String, reqwest::Error> {
+    let mut body: Vec<GitFile> = Vec::new();
     body.push(data.clone());
     let url = format!(
         "{}/solr/heline/update?&commitWithin=1000&overwrite=false&wt=json",
@@ -36,7 +36,7 @@ pub async fn insert(data: &GithubFile, base_url: &str) -> Result<String, reqwest
     Ok(json)
 }
 
-pub async fn update(data: &GithubFile, base_url: &str) -> Result<String, reqwest::Error> {
+pub async fn update(data: &GitFile, base_url: &str) -> Result<String, reqwest::Error> {
     let data = data.clone();
     let mut body: Vec<GithubFileUpdate> = Vec::new();
     let update = GithubFileUpdate {

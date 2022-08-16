@@ -2,7 +2,7 @@ use crate::solr;
 use crate::parser;
 use crate::git;
 use crate::utils;
-use crate::solr::GithubFile;
+use crate::solr::client::GitFile;
 
 use ignore::Walk;
 use std::path::{Path, PathBuf};
@@ -77,7 +77,7 @@ async fn process_file(
             let paths = path.to_str().unwrap().split("/").collect::<Vec<_>>();
             let file_path = paths[1..paths.len()].to_vec().join("/");
             let id = [github_repo, &paths[2..paths.len()].to_vec().join("/")].join("/");
-            let data = solr::GithubFile {
+            let data = GitFile {
                 id: id.to_owned(),
                 file_id: format!("g/{}/{}", github_repo, file_path.to_string()),
                 owner_id: user_id.to_string(),
@@ -95,7 +95,7 @@ async fn process_file(
     }
 }
 
-async fn store(mut data: solr::GithubFile, html: &str, base_url: &str) {
+async fn store(mut data: GitFile, html: &str, base_url: &str) {
     let document = Document::from(html);
     let table = document.find(Class("highlight-table"));
     if let Some(el) = table.last() {
@@ -130,15 +130,15 @@ async fn store(mut data: solr::GithubFile, html: &str, base_url: &str) {
     }
 }
 
-async fn create_or_update(update: &mut bool, data: &GithubFile, base_url: &str) {
+async fn create_or_update(update: &mut bool, data: &GitFile, base_url: &str) {
     if *update == false {
-        match solr::insert(&data, base_url).await {
+        match solr::client::insert(&data, base_url).await {
             Ok(_) => {}
             Err(e) => print!("{}\n", e.to_string()),
         }
         *update = true;
     } else {
-        match solr::update(&data, base_url).await {
+        match solr::client::update(&data, base_url).await {
             Ok(_) => {}
             Err(e) => print!("{}\n", e.to_string()),
         }
