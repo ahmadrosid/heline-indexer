@@ -4,7 +4,7 @@ mod utils;
 mod parser;
 mod solr;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use reqwest::Url;
 
 #[tokio::main]
@@ -49,15 +49,13 @@ pub async fn main() {
         }
     }
 
-    let mut index = 0;
     let max_index = 100;
-    for git_url in value {
+    for (index, git_url) in value.into_iter().enumerate() {
         if index == max_index {
             break;
         }
-        index += 1;
 
-        let mut repository_directory = std::env::current_dir().expect("Failed to get current directory");
+        let mut repository_directory = PathBuf::new();
         repository_directory.push("repos");
 
         match &option[..] {
@@ -68,7 +66,7 @@ pub async fn main() {
                 match git::get_repo(&git_url).await {
                     Ok(_repo_id) => indexer::process(&repository_directory, &git_url, &base_url).await,
                     Err(e) => {
-                        print!("{}\n", format!("{}: Error {}", git_url, e));
+                        print!("{}: Error {}\n", git_url, e);
                         continue;
                     }
                 };
