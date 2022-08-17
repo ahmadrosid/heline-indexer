@@ -1,13 +1,13 @@
-use crate::solr;
-use crate::parser;
 use crate::git;
-use crate::utils;
+use crate::parser;
+use crate::solr;
 use crate::solr::client::GitFile;
+use crate::utils;
 
 use ignore::Walk;
-use std::path::{Path, PathBuf};
 use select::document::Document;
 use select::predicate::{Class, Name};
+use std::path::{Path, PathBuf};
 
 pub async fn process(repo_dir: &PathBuf, git_url: &str, base_url: &str) {
     let git_host = utils::get_url_host(git_url).unwrap_or("github.com".to_string());
@@ -53,10 +53,10 @@ pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str, git_host
             if total == 0 {
                 print!("{}\n", format!("Folder '{}' not found!", git_repo));
             } else {
-                print!("{}", format!(
-                    "Done indexing '{}' total {} files!",
-                    git_repo, total
-                ));
+                print!(
+                    "{}",
+                    format!("Done indexing '{}' total {} files!", git_repo, total)
+                );
             }
         }
         Err(e) => {
@@ -64,7 +64,6 @@ pub async fn index_directory(dir: &Path, git_url: &str, base_url: &str, git_host
         }
     }
 }
-
 
 async fn process_file(
     path: &Path,
@@ -88,7 +87,7 @@ async fn process_file(
                 repo: git_repo.to_string(),
                 branch: branch.to_owned(),
                 lang: lang.to_string(),
-                content: Vec::new()
+                content: Vec::new(),
             };
             store(data, &html, base_url).await;
         }

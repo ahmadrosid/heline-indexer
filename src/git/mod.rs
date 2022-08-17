@@ -2,8 +2,8 @@ pub mod github;
 pub mod gitlab;
 
 use crate::utils;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 
 pub fn get_branch_name(dir: &Path) -> String {
     let file_path = dir.join(".git/HEAD");
@@ -20,7 +20,10 @@ pub fn get_branch_name(dir: &Path) -> String {
 }
 
 pub fn clone_repo(cwd: &Path, ssh_url: &str, repo_name: &str) -> bool {
-    print!("{}\n", format!("Cloning '{}' to {}/{}", ssh_url, cwd.display(), repo_name));
+    print!(
+        "{}\n",
+        format!("Cloning '{}' to {}/{}", ssh_url, cwd.display(), repo_name)
+    );
     if !cwd.exists() {
         std::fs::create_dir(cwd).expect(&format!("Failed to create directory: {}", cwd.display()));
     }
@@ -48,8 +51,8 @@ pub async fn get_repo(git_url: &str) -> Result<String, String> {
             return match &host[..] {
                 "github.com" => github::get_repo(&git_repo).await,
                 "gitlab.com" => gitlab::get_repo(&git_repo).await,
-                _ => Err(format!("Unsupported git host: {}", host))
-            }
+                _ => Err(format!("Unsupported git host: {}", host)),
+            };
         }
     }
 }

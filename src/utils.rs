@@ -1,7 +1,7 @@
+use reqwest::Url;
+use serde_json::Value;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use serde_json::Value;
-use reqwest::Url;
 
 fn truncate(s: &str, max_chars: usize) -> &str {
     match s.char_indices().nth(max_chars) {
@@ -42,14 +42,14 @@ pub fn delete_dir(dir_path: &PathBuf) {
     println!("Deleting: {}", dir_path.display());
     match std::fs::remove_dir_all(dir_path) {
         Ok(_) => {}
-        Err(err) => println!("Failed to delete dir, {}", err)
+        Err(err) => println!("Failed to delete dir, {}", err),
     }
 }
 
 pub fn get_url_host(url: &str) -> Option<String> {
     match Url::parse(url) {
         Ok(val) => Some(val.domain()?.to_string()),
-        Err(_) => None
+        Err(_) => None,
     }
 }
 
