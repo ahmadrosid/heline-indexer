@@ -30,7 +30,7 @@ pub fn clone_repo(cwd: &Path, ssh_url: &str, repo_name: &str) -> bool {
 
     let cloned_repo_dir = cwd.join(Path::new(repo_name));
     if cloned_repo_dir.exists() {
-        print!("Repository already cloned: {}", cloned_repo_dir.display());
+        print!("Repository already cloned: {}\n", cloned_repo_dir.display());
         return true;
     }
 

@@ -1,7 +1,7 @@
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
-pub fn read_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
+pub fn read_file(file_path: &PathBuf) -> Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap();
     if let Some(name) = file_path.file_name().unwrap().to_str() {
         match name {

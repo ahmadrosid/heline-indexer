@@ -6,6 +6,7 @@ pub struct Arg {
     pub folder: PathBuf,
     pub solr_url: String,
     pub is_index_folder: bool,
+    pub with_delete_folder: bool,
 }
 
 impl Arg {
@@ -15,6 +16,7 @@ impl Arg {
             folder: PathBuf::new(),
             solr_url: String::new(),
             is_index_folder: false,
+            with_delete_folder: false,
         }
     }
 
@@ -26,11 +28,14 @@ impl Arg {
         };
 
         let arg_input: Vec<String> = env::args().collect();
-
         for input in &arg_input {
             if input == "-h" || input == "--help" {
                 self.print_help();
                 std::process::exit(0);
+            }
+
+            if input == "--delete-dir" {
+                self.with_delete_folder = true;
             }
         }
 
@@ -79,7 +84,8 @@ impl Arg {
             "    <INDEX_FILE>    Index file with json format",
             "    --folder        Custom folder to source code",
             "    -h --help       Print help text",
-            ""
+            "    --delete-dir    Delete directory after indexing.",
+            "",
         ];
         println!("{}", help_text.join("\n"));
     }
