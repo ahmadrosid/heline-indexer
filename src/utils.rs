@@ -31,7 +31,7 @@ pub fn parse_json(path: &PathBuf) -> Vec<String> {
             }
         }
         Err(e) => {
-            println!("Got an error! {}", e);
+            println!("Got an error when parsing json! {}\n{},{}", e, &data, path.display());
         }
     }
 

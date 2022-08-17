@@ -1,5 +1,5 @@
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Arg {
     pub index_file: PathBuf,
@@ -34,17 +34,17 @@ impl Arg {
             }
         }
 
-        let file = match arg_input.get(1) {
-            Some(file) => file,
+        self.index_file = match arg_input.get(1) {
+            Some(file) => PathBuf::from(file),
             None => {
                 return Err(format!("Index file path is required!"));
             }
         };
 
-        if !Path::new(file).exists() {
+        if !self.index_file.exists() {
             return Err(format!(
                 "Please input the correct index file! Current file is not exists: {}",
-                file
+                self.index_file.display()
             ));
         }
 
