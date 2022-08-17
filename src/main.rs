@@ -9,14 +9,10 @@ use reqwest::Url;
 
 #[tokio::main]
 pub async fn main() {
-    let mut base_url = String::new();
-    match std::env::var("BASE_URL") {
-        Ok(val) => base_url.push_str(&val),
-        Err(e) => {
-            print!("{}\n",format!("BASE_URL: {}!", e));
-            std::process::exit(1);
-        }
-    }
+    let base_url = match std::env::var("BASE_URL") {
+        Ok(val) => val,
+        Err(_) => "http://localhost:8984".to_string()
+    };
 
     let file = match std::env::args().nth(1) {
         Some(file) => file,
