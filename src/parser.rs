@@ -16,7 +16,7 @@ pub fn read_file(file_path: &Path) -> Result<(Vec<char>, &str), String> {
             return Err(format!("Failed to read file: '{}'!", path));
         }
 
-        if source.len() <= 5 {
+        if source.len() <= 12 {
             return Err(format!("Source code to short: {}", source));
         }
 
