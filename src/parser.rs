@@ -1,6 +1,38 @@
 use std::fs;
 use std::path::PathBuf;
 
+// TODO: Use this enum to map the file extension
+enum Language {
+    Raw,
+    Shell,
+    Javascript,
+    Go,
+    Groovy,
+    Typescript,
+    C,
+    Cpp,
+    HTML,
+    Haskell,
+    Java,
+    Kotlin,
+    Lua,
+    Markdown,
+    Nim,
+    Python,
+    PHP,
+    Ruby,
+    Rust,
+    Toml,
+    CSharp,
+    Yaml,
+    Dart,
+    Diff,
+    Json,
+    ProtocolBuffers,
+    Gemfile,
+    Dockerfile
+}
+
 pub fn read_file(file_path: &PathBuf) -> Result<(Vec<char>, &str), String> {
     let path = file_path.to_str().unwrap();
     if let Some(name) = file_path.file_name().unwrap().to_str() {
@@ -47,6 +79,7 @@ pub fn read_file(file_path: &PathBuf) -> Result<(Vec<char>, &str), String> {
                 "dart" => "Dart",
                 "patch" => "Diff",
                 "json" => "JSON",
+                "proto" => "Protocol Buffer",
                 "lock" => match file_path.file_name().unwrap().to_str().unwrap() {
                     "Cargo.lock" => "TOML",
                     "Gemfile.lock" => "Gemfile",
@@ -104,6 +137,7 @@ pub fn render_html(input: Vec<char>, lang: &str) -> String {
         "TOML" => hl_core::render_html(input, "toml"),
         "TypeScript" => hl_core::render_html(input, "typescript"),
         "YAML" => hl_core::render_html(input, "yaml"),
+        "Protocol Buffer" => hl_core::render_html(input, "proto"),
         _ => {
             let mark_bash = String::from("#!/bin/sh");
             if input.len() > mark_bash.len() {

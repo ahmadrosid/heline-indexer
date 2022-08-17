@@ -55,7 +55,8 @@ pub async fn index_directory(repo_index_dir: &Path, git_url: &str, base_url: &st
         },
     };
 
-    let dirs = Walk::new(repo_index_dir).into_iter().filter_map(|v| v.ok());
+    let walk_dir_path = repo_index_dir.join(&git_repo.split("/").last().unwrap());
+    let dirs = Walk::new(&walk_dir_path).into_iter().filter_map(|v| v.ok());
     let root_path_len = repo_index_dir
         .to_str()
         .unwrap()
@@ -83,7 +84,7 @@ pub async fn index_directory(repo_index_dir: &Path, git_url: &str, base_url: &st
     }
 
     if total == 0 {
-        print!("{}\n", format!("Folder '{}' not found!", git_repo));
+        print!("{}\n", format!("Folder '{}' not found!", walk_dir_path.display()));
     } else {
         print!(
             "{}\n",

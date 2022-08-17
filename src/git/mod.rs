@@ -20,10 +20,6 @@ pub fn get_branch_name(dir: &Path) -> String {
 }
 
 pub fn clone_repo(cwd: &Path, ssh_url: &str, repo_name: &str) -> bool {
-    print!(
-        "{}\n",
-        format!("Cloning '{}' to {}/{}", ssh_url, cwd.display(), repo_name)
-    );
     if !cwd.exists() {
         std::fs::create_dir(cwd).expect(&format!("Failed to create directory: {}", cwd.display()));
     }
@@ -34,6 +30,10 @@ pub fn clone_repo(cwd: &Path, ssh_url: &str, repo_name: &str) -> bool {
         return true;
     }
 
+    print!(
+        "{}\n",
+        format!("Cloning '{}' to {}/{}", ssh_url, cwd.display(), repo_name)
+    );
     utils::exec_command(
         Command::new("git")
             .current_dir(cwd)
