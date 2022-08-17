@@ -18,7 +18,7 @@ pub fn exec_command(cmd: &mut Command) -> bool {
     }
 }
 
-pub fn parse_json(path: &str) -> Vec<String> {
+pub fn parse_json(path: &PathBuf) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     let data: String = std::fs::read_to_string(path).unwrap_or(String::new());
     let value: Result<Value, serde_json::Error> = serde_json::from_str(&*data);
