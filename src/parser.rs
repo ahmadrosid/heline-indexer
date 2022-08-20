@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 // TODO: Use this enum to map the file extension
+#[allow(dead_code)]
 enum Language {
     Raw,
     Shell,
@@ -30,7 +31,7 @@ enum Language {
     Json,
     ProtocolBuffers,
     Gemfile,
-    Dockerfile
+    Dockerfile,
 }
 
 pub fn read_file(file_path: &PathBuf) -> Result<(Vec<char>, &str), String> {

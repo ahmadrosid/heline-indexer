@@ -67,7 +67,7 @@ pub fn get_repo_name(git_url: &str) -> String {
 
 pub fn get_git_repo_path(git_url: &str) -> String {
     let paths: Vec<&str> = git_url.split("/").collect();
-    let path = format!("{}/{}", paths[paths.len() - 2], paths[paths.len() - 1]);
+    let path = paths[3..].join("/");
     if path.ends_with(".git") {
         return truncate(&path, path.len() - 4).to_string();
     }

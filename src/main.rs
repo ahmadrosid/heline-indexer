@@ -6,6 +6,7 @@ mod solr;
 mod utils;
 
 use arg::Arg;
+use indexer::Indexer;
 
 #[tokio::main]
 pub async fn main() {
@@ -22,7 +23,13 @@ pub async fn main() {
     for git_url in value {
         match git::get_repo(&git_url).await {
             Ok(_repo_id) => {
-                indexer::process(&arg.folder, &git_url, &arg.solr_url, arg.with_delete_folder).await
+                let indexer_service = Indexer::new(
+                    arg.folder.clone(),
+                    &git_url,
+                    &arg.solr_url,
+                    arg.with_delete_folder,
+                );
+                indexer_service.process().await;
             }
             Err(e) => {
                 print!("{}: Error {}\n", git_url, e);

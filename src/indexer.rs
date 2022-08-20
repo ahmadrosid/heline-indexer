@@ -19,77 +19,104 @@ pub struct MetaIndexFile {
     git_host: String,
 }
 
-pub async fn process(repo_dir: &PathBuf, git_url: &str, base_url: &str, with_delete_dir: bool) {
-    let git_host = utils::get_url_host(git_url).unwrap_or("github.com".to_string());
-    let repo_name = utils::get_repo_name(git_url);
-    let git_repo = utils::get_git_repo_path(git_url);
-    let ssh_url = utils::get_git_ssh_url(git_url);
-    let success = git::clone_repo(repo_dir, &ssh_url, &repo_name);
-
-    if success {
-        index_directory(repo_dir, &git_repo, &base_url, &git_host).await;
-        if with_delete_dir {
-            utils::delete_dir(&repo_dir.join(Path::new(&repo_name)));
-        }
-    } else {
-        print!("{}\n", format!("Failed to clone: {}", ssh_url));
-    }
+pub struct Indexer {
+    pub repo_dir: PathBuf,
+    pub git_url: String,
+    pub base_url: String,
+    pub with_delete_dir: bool,
+    pub git_host: String,
+    pub repo_name: String,
 }
 
-pub async fn index_directory(repo_index_dir: &Path, git_url: &str, base_url: &str, git_host: &str) {
-    println!("Start indexing on folder: {}", repo_index_dir.display());
+impl Indexer {
+    pub fn new(repo_dir: PathBuf, git_url: &str, base_url: &str, with_delete_dir: bool) -> Self {
+        let git_host = utils::get_url_host(git_url).unwrap_or("github.com".to_string());
+        let repo_name = utils::get_repo_name(git_url);
 
-    let mut total = 0;
-    let git_repo = utils::get_git_repo_path(git_url);
-    let username = git_repo.split("/").next().unwrap();
-    let branch = git::get_branch_name(repo_index_dir);
-
-    let user_id = match git_host {
-        "gitlab.com" => String::from("0000"),
-        _ => match git::github::get_user_id(username).await {
-            Ok(user_id) => user_id,
-            Err(e) => {
-                print!("{}", e);
-                String::from("00000")
-            }
-        },
-    };
-
-    let walk_dir_path = repo_index_dir.join(&git_repo.split("/").last().unwrap());
-    let dirs = Walk::new(&walk_dir_path).into_iter().filter_map(|v| v.ok());
-    let root_path_len = repo_index_dir
-        .to_str()
-        .unwrap()
-        .split("/")
-        .collect::<Vec<_>>()
-        .len();
-
-    for entry in dirs {
-        if !entry.path().is_file() {
-            continue;
-        }
-
-        print!("{}\n", format!("Indexing {}", entry.path().display()));
-        let meta = MetaIndexFile {
-            path: PathBuf::from(entry.path()),
-            root_path_len: root_path_len,
-            git_repo: git_repo.to_string(),
-            user_id: user_id.to_string(),
-            branch: branch.to_string(),
+        Self {
+            repo_dir,
+            git_url: git_url.to_string(),
             base_url: base_url.to_string(),
-            git_host: git_host.to_string(),
-        };
-        process_file(meta).await;
-        total += 1;
+            with_delete_dir,
+            git_host,
+            repo_name,
+        }
     }
 
-    if total == 0 {
-        print!("{}\n", format!("Folder '{}' not found!", walk_dir_path.display()));
-    } else {
-        print!(
-            "{}\n",
-            format!("Done indexing '{}' total {} files!", git_repo, total)
-        );
+    pub async fn process(&self) {
+        let ssh_url = utils::get_git_ssh_url(&self.git_url);
+        let success = git::clone_repo(&self.repo_dir, &ssh_url, &self.repo_name);
+
+        if success {
+            self.index_directory().await;
+            if self.with_delete_dir {
+                utils::delete_dir(&self.repo_dir.join(Path::new(&self.repo_name)));
+            }
+        } else {
+            print!("{}\n", format!("Failed to clone: {}", ssh_url));
+        }
+    }
+
+    pub async fn index_directory(&self) {
+        println!("Start indexing on folder: {}", self.repo_dir.display());
+
+        let mut total = 0;
+        let git_repo = utils::get_git_repo_path(&self.git_url);
+        let username = git_repo.split("/").next().unwrap();
+        let branch = git::get_branch_name(&self.repo_dir);
+
+        let user_id = match &self.git_host[..] {
+            "gitlab.com" => String::from("0000"),
+            _ => match git::github::get_user_id(username).await {
+                Ok(user_id) => user_id,
+                Err(e) => {
+                    print!("{}", e);
+                    String::from("00000")
+                }
+            },
+        };
+
+        let repo_name = utils::get_repo_name(&self.git_url);
+        let walk_dir_path = self.repo_dir.join(repo_name);
+        let dirs = Walk::new(&walk_dir_path).into_iter().filter_map(|v| v.ok());
+        let root_path_len = self
+            .repo_dir
+            .to_str()
+            .unwrap()
+            .split("/")
+            .collect::<Vec<_>>()
+            .len();
+
+        for entry in dirs {
+            if !entry.path().is_file() {
+                continue;
+            }
+
+            print!("{}\n", format!("Indexing {}", entry.path().display()));
+            let meta = MetaIndexFile {
+                path: PathBuf::from(entry.path()),
+                git_repo: git_repo.to_string(),
+                user_id: user_id.to_string(),
+                branch: branch.to_string(),
+                base_url: self.base_url.to_string(),
+                git_host: self.git_host.to_string(),
+                root_path_len,
+            };
+            process_file(meta).await;
+            total += 1;
+        }
+
+        if total == 0 {
+            print!(
+                "{}\n",
+                format!("Folder '{}' not found!", walk_dir_path.display())
+            );
+        } else {
+            print!(
+                "{}\n",
+                format!("Done indexing '{}' total {} files!", git_repo, total)
+            );
+        }
     }
 }
 
@@ -101,7 +128,7 @@ async fn process_file(meta: MetaIndexFile) {
             let file_path = paths[meta.root_path_len..paths.len()].to_vec().join("/");
             let id = [
                 meta.git_repo.to_string(),
-                paths[2..paths.len()].to_vec().join("/"),
+                paths[meta.root_path_len..paths.len()].to_vec().join("/"),
             ]
             .join("/");
             let data = GitFile {
@@ -113,7 +140,7 @@ async fn process_file(meta: MetaIndexFile) {
                     file_path.to_string()
                 ),
                 owner_id: meta.user_id.to_string(),
-                path: paths[meta.root_path_len..paths.len() - 2]
+                path: paths[meta.root_path_len - 2..paths.len() - 1]
                     .to_vec()
                     .join("/"),
                 repo: meta.git_repo.to_string(),
