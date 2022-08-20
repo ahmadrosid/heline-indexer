@@ -102,7 +102,7 @@ impl Indexer {
                 git_host: self.git_host.to_string(),
                 root_path_len,
             };
-            process_file(meta).await;
+            self.process_file(meta).await;
             total += 1;
         }
 
@@ -118,90 +118,90 @@ impl Indexer {
             );
         }
     }
-}
 
-async fn process_file(meta: MetaIndexFile) {
-    match parser::read_file(&meta.path) {
-        Ok((input, lang)) => {
-            let html = parser::render_html(input, lang);
-            let paths = meta.path.to_str().unwrap().split("/").collect::<Vec<_>>();
-            let file_path = paths[meta.root_path_len..paths.len()].to_vec().join("/");
-            let id = [
-                meta.git_repo.to_string(),
-                paths[meta.root_path_len..paths.len()].to_vec().join("/"),
-            ]
-            .join("/");
-            let data = GitFile {
-                id: id.to_owned(),
-                file_id: format!(
-                    "{}/{}/{}",
-                    &meta.git_host,
-                    &meta.git_repo,
-                    file_path.to_string()
-                ),
-                owner_id: meta.user_id.to_string(),
-                path: paths[meta.root_path_len - 2..paths.len() - 1]
-                    .to_vec()
-                    .join("/"),
-                repo: meta.git_repo.to_string(),
-                branch: meta.branch.to_owned(),
-                lang: lang.to_string(),
-                content: Vec::new(),
-            };
-            store(data, &html, &meta.base_url).await;
-        }
-        Err(msg) => {
-            print!("{}\n", msg);
+    async fn process_file(&self, meta: MetaIndexFile) {
+        match parser::read_file(&meta.path) {
+            Ok((input, lang)) => {
+                let html = parser::render_html(input, lang);
+                let paths = meta.path.to_str().unwrap().split("/").collect::<Vec<_>>();
+                let file_path = paths[meta.root_path_len..paths.len()].to_vec().join("/");
+                let id = [
+                    meta.git_repo.to_string(),
+                    paths[meta.root_path_len..paths.len()].to_vec().join("/"),
+                ]
+                .join("/");
+                let data = GitFile {
+                    id: id.to_owned(),
+                    file_id: format!(
+                        "{}/{}/{}",
+                        &meta.git_host,
+                        &meta.git_repo,
+                        file_path.to_string()
+                    ),
+                    owner_id: meta.user_id.to_string(),
+                    path: paths[meta.root_path_len - 2..paths.len() - 1]
+                        .to_vec()
+                        .join("/"),
+                    repo: meta.git_repo.to_string(),
+                    branch: meta.branch.to_owned(),
+                    lang: lang.to_string(),
+                    content: Vec::new(),
+                };
+                self.store(data, &html, &meta.base_url).await;
+            }
+            Err(msg) => {
+                print!("{}\n", msg);
+            }
         }
     }
-}
 
-async fn store(mut data: GitFile, html: &str, base_url: &str) {
-    let document = Document::from(html);
-    let table = document.find(Class("highlight-table"));
-    if let Some(el) = table.last() {
-        let mut update = false;
-        let mut index = 0;
-        let mut max_index = 3;
-        let max_chars = 2000;
-        let mut child: String = String::new();
-        for td in el.find(Name("tr")) {
-            index += 1;
-            child.push_str(&td.html());
-            child.push('\n');
-            if index == max_index && child.len() < max_chars {
-                max_index += 1;
+    async fn store(&self, mut data: GitFile, html: &str, base_url: &str) {
+        let document = Document::from(html);
+        let table = document.find(Class("highlight-table"));
+        if let Some(el) = table.last() {
+            let mut update = false;
+            let mut index = 0;
+            let mut max_index = 3;
+            let max_chars = 2000;
+            let mut child: String = String::new();
+            for td in el.find(Name("tr")) {
+                index += 1;
+                child.push_str(&td.html());
+                child.push('\n');
+                if index == max_index && child.len() < max_chars {
+                    max_index += 1;
+                }
+                if index >= max_index {
+                    index = 0;
+                    max_index = 3;
+                    data.content = vec![];
+                    data.content.push(child.to_string());
+                    child = String::new();
+                    self.create_or_update(&mut update, &data, base_url).await;
+                }
             }
-            if index >= max_index {
-                index = 0;
-                max_index = 3;
+
+            // If there any left content that less than `max_index` line then store it to DB!
+            if index != 0 {
                 data.content = vec![];
                 data.content.push(child.to_string());
-                child = String::new();
-                create_or_update(&mut update, &data, base_url).await;
+                self.create_or_update(&mut update, &data, base_url).await;
             }
         }
-
-        // If there any left content that less than `max_index` line then store it to DB!
-        if index != 0 {
-            data.content = vec![];
-            data.content.push(child.to_string());
-            create_or_update(&mut update, &data, base_url).await;
-        }
     }
-}
 
-async fn create_or_update(update: &mut bool, data: &GitFile, base_url: &str) {
-    if *update == false {
-        match solr::client::insert(&data, base_url).await {
-            Ok(_) => {}
-            Err(e) => print!("{}\n", e.to_string()),
-        }
-        *update = true;
-    } else {
-        match solr::client::update(&data, base_url).await {
-            Ok(_) => {}
-            Err(e) => print!("{}\n", e.to_string()),
+    async fn create_or_update(&self, update: &mut bool, data: &GitFile, base_url: &str) {
+        if *update == false {
+            match solr::client::insert(&data, base_url).await {
+                Ok(_) => {}
+                Err(e) => print!("{}\n", e.to_string()),
+            }
+            *update = true;
+        } else {
+            match solr::client::update(&data, base_url).await {
+                Ok(_) => {}
+                Err(e) => print!("{}\n", e.to_string()),
+            }
         }
     }
 }
